@@ -43,3 +43,16 @@
 4. Improve hydration loop: refillable containers, source contamination, boiling/purification, rain collection and clear HUD feedback.
 5. Add inventory UI and item stack management.
 6. Add regression checks for existing movement, collection, crafting, building and touch controls.
+
+## Stability refactor — 2026-11-15
+- Created isolated branch `stability-refactor` so the previous published versions remain untouched.
+- Removed a duplicated renderer/scene initialization block that redeclared `$`, `scene`, `camera`, `renderer`, `sun`, and `mat` in the same module. This caused a JavaScript parse failure before the game could start.
+- Completed the Babylon compatibility surface for `THREE.Color` and corrected preview materials to use Babylon `alpha`, `disableDepthWrite`, and `diffuseColor`.
+- Fixed the animation-loop brace mismatch, which was another syntax error found by the new build check.
+- Fixed the quest text being written to a hidden data attribute instead of the visible quest HUD.
+- Rain collectors now accumulate water only while the weather is rainy; removed the second always-on timer.
+- Mobile look input now captures and releases its pointer correctly, including cancel/lost-capture events.
+- Save data is written when the page is hidden, not only on the periodic timer/page close.
+- Added `npm run check`, which extracts and syntax-checks every inline JavaScript block before deployment. Render build log confirmed: `JavaScript syntax check passed.`
+- New isolated Render service: `https://survival-island-3d-v2.onrender.com` (branch `stability-refactor`). Deployment status was confirmed `live` for commit `2d078bf692870d9a7f7b8d6e7f028945b243ecef`; subsequent refinements were pushed after that build and require the latest deploy to finish.
+- Browser/WebGL gameplay testing is still required; a successful syntax check and static deploy do not prove runtime rendering or controls.
