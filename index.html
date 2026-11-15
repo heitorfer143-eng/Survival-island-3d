@@ -77,7 +77,7 @@ document.getElementById('play').addEventListener('click', () => {
 });
 </script>
 <script type="module">
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+const THREE = await import('https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js').catch(() => import('https://unpkg.com/three@0.180.0/build/three.module.js'));
 const $=id=>document.getElementById(id),scene=new THREE.Scene();scene.background=new THREE.Color(0x8ac8d5);scene.fog=new THREE.Fog(0x8ac8d5,38,115);
 const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,180);camera.rotation.order='YXZ';
 let renderer;
@@ -87,8 +87,8 @@ try{
  try{renderer=new THREE.WebGLRenderer({canvas:document.createElement('canvas'),antialias:false,powerPreference:'low-power',precision:'mediump'});}
  catch(fallbackRendererError){throw new Error('O navegador não conseguiu criar um contexto WebGL. Atualize o navegador, feche outras abas 3D e tente novamente. '+String(fallbackRendererError?.message||fallbackRendererError))}
 }
-renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<800?1.25:1.65));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.mapSize={width:innerWidth<800?1024:2048,height:innerWidth<800?1024:2048};document.body.appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xc8efff,0x52613b,1.6));const sun=new THREE.DirectionalLight(0xfff0c5,2.1);sun.position.set(-25,38,15);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-42;sun.shadow.camera.right=42;sun.shadow.camera.top=42;sun.shadow.camera.bottom=-42;sun.shadow.bias=-.00018;scene.add(sun);
+renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<800?1.25:1.65));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xc8efff,0x52613b,1.6));const sun=new THREE.DirectionalLight(0xfff0c5,2.1);sun.position.set(-25,38,15);sun.castShadow=true;sun.shadow.mapSize.set(innerWidth<800?1024:2048,innerWidth<800?1024:2048);sun.shadow.camera.left=-42;sun.shadow.camera.right=42;sun.shadow.camera.top=42;sun.shadow.camera.bottom=-42;sun.shadow.bias=-.00018;scene.add(sun);
 const mat=(color,roughness=1)=>new THREE.MeshStandardMaterial({color,roughness});
 const sand=mat(0xd9c18a),grass=mat(0x4f9b58),wood=mat(0x79502e),leaf=mat(0x277344),rock=mat(0x818b8b),berry=mat(0xe34c65),water= new THREE.MeshStandardMaterial({color:0x168da9,roughness:.35,metalness:.1});
 const oceanGeo=new THREE.PlaneGeometry(300,300,72,72),ocean=new THREE.Mesh(oceanGeo,water);ocean.rotation.x=-Math.PI/2;ocean.position.y=-1.25;ocean.receiveShadow=true;
