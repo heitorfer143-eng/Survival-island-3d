@@ -16,11 +16,11 @@ try {
     const source = blocks[i][2] || "";
     if (!source.trim()) continue;
     const isModule = /\btype\s*=\s*["']module["']/i.test(attrs);
-    const file = path.join(temp, \`script-\${i}.\${isModule ? "mjs" : "js"}\`);
+    const file = path.join(temp, "script-" + i + "." + (isModule ? "mjs" : "js"));
     fs.writeFileSync(file, source);
     const result = spawnSync(process.execPath, ["--check", file], { encoding: "utf8" });
     if (result.status !== 0) {
-      process.stderr.write(result.stderr || result.stdout || \`Falha ao verificar script \${i}.\n\`);
+      process.stderr.write(result.stderr || result.stdout || ("Falha ao verificar script " + i + ".\n"));
       process.exitCode = 1;
       break;
     }
