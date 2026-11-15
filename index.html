@@ -107,6 +107,7 @@ catch(firstEngineError){
  catch(secondEngineError){throw new Error('O Babylon.js não conseguiu iniciar WebGL neste navegador. Atualize o navegador e feche outras abas 3D. '+String(secondEngineError?.message||secondEngineError))}
 }
 const sceneNative=new B.Scene(engine);
+canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();showBootError('O contexto gráfico foi reiniciado pelo navegador. Atualize a página para continuar.');});
 sceneNative.clearColor=new B.Color4(.53,.78,.84,1);
 sceneNative.skipPointerMovePicking=true;
 class CompatColor{
@@ -303,7 +304,7 @@ function refreshBuildUI(){buildPieces.forEach(b=>b.classList.toggle('selected',b
 function toggleBuild(){if(buildMode){closeBuild();return}buildMode=true;buildPanel.classList.add('open');if(!selectedPiece)selectedPiece='foundation';refreshBuildUI();if(preview)scene.remove(preview);preview=makeStructure(selectedPiece,0,0,0);preview.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.alpha=.42;o.material.disableDepthWrite=true}});$('hint').textContent='Escolha uma peça, gire e construa. PC: R girar · Enter construir · Esc fechar.'}
 function closeBuild(){buildMode=false;buildPanel.classList.remove('open');if(preview){scene.remove(preview);preview=null}}
 function rotateBuild(){buildRotation=(buildRotation+Math.PI/2)%(Math.PI*2);if(preview)preview.rotation.y=buildRotation}
-function chooseBuild(type){selectedPiece=type;refreshBuildUI();if(preview){scene.remove(preview);preview=makeStructure(type,0,0,0);preview.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=.42;o.material.depthWrite=false}})}}
+function chooseBuild(type){selectedPiece=type;refreshBuildUI();if(preview){scene.remove(preview);preview=makeStructure(type,0,0,0);preview.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.alpha=.42;o.material.disableDepthWrite=true}})}}
 function placeBuild(){if(!buildMode)return;const info=pieceInfo[selectedPiece],p=buildPosition(),layer=info.layer;if(woodCount<info.wood||stoneCount<info.stone){$('hint').textContent='Materiais insuficientes para '+info.label.toLowerCase()+'.';return}if(Math.hypot(p.x-player.x,p.z-player.z)>7||Math.hypot(p.x,p.z)>31){$('hint').textContent='Não é possível construir nesse local.';return}if(Math.abs(groundY(p.x+1.3,p.z)-groundY(p.x-1.3,p.z))>1.05||Math.abs(groundY(p.x,p.z+1.3)-groundY(p.x,p.z-1.3))>1.05){$('hint').textContent='Terreno muito inclinado. Escolha um local mais plano.';return}if(cellOccupied(p.x,p.z,layer)){ $('hint').textContent='Já existe uma peça desse nível nesse espaço.';return}woodCount-=info.wood;stoneCount-=info.stone;const g=makeStructure(selectedPiece,p.x,p.z,p.rotation);builtStructures.push(g);saveBase();updateHud();$('hint').textContent=info.label+' construída! Sua base está crescendo.'}
 buildPieces.forEach(b=>b.addEventListener('click',()=>chooseBuild(b.dataset.piece)));
 $('buildToggle').onclick=toggleBuild;$('rotateBuild').onclick=rotateBuild;$('placeBuild').onclick=placeBuild;$('cancelBuild').onclick=closeBuild;
@@ -372,7 +373,7 @@ function loadSurvivalState(){
  }catch(e){}
 }
 loadSurvivalState();
-window.addEventListener("pagehide",saveSurvivalState);
+window.addEventListener("pagehide",saveSurvivalState);document.addEventListener("visibilitychange",()=>{if(document.hidden)saveSurvivalState()});
 
 const builtObjects=[],animals=[],landmarks=[],rainDrops=[];
 const buildMenu=$("buildMenu");
