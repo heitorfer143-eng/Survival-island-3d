@@ -54,5 +54,5 @@
 - Mobile look input now captures and releases its pointer correctly, including cancel/lost-capture events.
 - Save data is written when the page is hidden, not only on the periodic timer/page close.
 - Added `npm run check`, which extracts and syntax-checks every inline JavaScript block before deployment. Render build log confirmed: `JavaScript syntax check passed.`
-- New isolated Render service: `https://survival-island-3d-v2.onrender.com` (branch `stability-refactor`). Deployment status was confirmed `live` for commit `2d078bf692870d9a7f7b8d6e7f028945b243ecef`; subsequent refinements were pushed after that build and require the latest deploy to finish.
+- New isolated Render service: `https://survival-island-3d-v2.onrender.com` (branch `stability-refactor`). Latest deployment was confirmed `live` for commit `c1c5e50419327220ad2f23481031485e9038a5c0`.
 - Browser/WebGL gameplay testing is still required; a successful syntax check and static deploy do not prove runtime rendering or controls.
