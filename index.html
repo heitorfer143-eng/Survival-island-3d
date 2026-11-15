@@ -255,6 +255,19 @@ for(let z=0;z<=N;z++)for(let x=0;x<=N;x++){
 }
 for(let z=0;z<N;z++)for(let x=0;x<N;x++){let a=z*(N+1)+x,b=a+1,c=a+N+1,d=c+1;inds.push(a,c,b,b,c,d)}
 const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(terrainColors,3));geo.setIndex(inds);geo.computeVertexNormals();const island=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.96}));island.receiveShadow=true;scene.add(island);
+// Base nativa do Babylon: mantém a ilha visível mesmo se a malha detalhada falhar.
+const islandBase=B.MeshBuilder.CreateCylinder('island-base',{height:.34,diameter:68,tessellation:96},sceneNative);
+islandBase.position.y=-1.34;islandBase.isPickable=false;
+const islandBaseMat=new B.StandardMaterial('island-base-material',sceneNative);
+islandBaseMat.diffuseColor=B.Color3.FromHexString('#bda477');
+islandBaseMat.specularColor=new B.Color3(.04,.04,.04);
+islandBase.material=islandBaseMat;
+const islandCore=B.MeshBuilder.CreateCylinder('island-core',{height:.10,diameter:63.5,tessellation:96},sceneNative);
+islandCore.position.y=-1.12;islandCore.isPickable=false;
+const islandCoreMat=new B.StandardMaterial('island-core-material',sceneNative);
+islandCoreMat.diffuseColor=B.Color3.FromHexString('#4f9b58');
+islandCoreMat.specularColor=new B.Color3(.03,.03,.03);
+islandCore.material=islandCoreMat;
 function groundY(x,z){let r=Math.hypot(x,z),edge=Math.max(0,1-r/34);return -1.1+Math.pow(edge,.48)*3.3+Math.exp(-((x-8)**2+(z+4)**2)/100)*3+Math.exp(-((x+13)**2+(z-9)**2)/70)*2}
 
 // Céu atmosférico, sol visível e nuvens leves: decoração de baixo custo para celular.
@@ -275,7 +288,7 @@ let seed=42;function rand(){seed=(seed*1664525+1013904223)>>>0;return seed/42949
 for(let i=0;i<52;i++){let a=rand()*Math.PI*2,r=7+rand()*23,x=Math.cos(a)*r,z=Math.sin(a)*r;if(groundY(x,z)>.1)addTree(x,z)}
 for(let i=0;i<27;i++){let a=rand()*Math.PI*2,r=5+rand()*27,x=Math.cos(a)*r,z=Math.sin(a)*r;addRock(x,z)}
 for(let i=0;i<17;i++){let a=rand()*Math.PI*2,r=6+rand()*24,x=Math.cos(a)*r,z=Math.sin(a)*r;addFruit(x,z)}
-const player={x:0,z:0,y:groundY(0,0)+1.65,vy:0,yaw:0,pitch:0,onGround:true};camera.position.set(player.x,player.y,player.z);
+const player={x:0,z:0,y:groundY(0,0)+1.65,vy:0,yaw:0,pitch:-.10,onGround:true};camera.position.set(player.x,player.y,player.z);
 
 const buildPanel=$('buildPanel'),buildPieces=[...document.querySelectorAll('[data-piece]')];
 const pieceInfo={
