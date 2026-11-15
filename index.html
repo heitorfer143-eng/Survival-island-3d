@@ -86,14 +86,13 @@ try{
 }catch(primaryRendererError){
  try{renderer=new THREE.WebGLRenderer({canvas:document.createElement('canvas'),antialias:false,powerPreference:'low-power',precision:'mediump'});}
  catch(fallbackRendererError){throw new Error('O navegador não conseguiu criar um contexto WebGL. Atualize o navegador, feche outras abas 3D e tente novamente. '+String(fallbackRendererError?.message||fallbackRendererError))}
-}renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<800?1.6:2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;renderer physicallyCorrectLights=true;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xc8efff,0x52613b,1.6));const sun=new THREE.DirectionalLight(0xfff0c5,2.1);sun.position.set(-25,38,15);sun.castShadow=true;sun.shadow.mapSize.set(innerWidth<800?1536:3072,innerWidth<800?1536:3072);sun.shadow.camera.left=-42;sun.shadow.camera.right=42;sun.shadow.camera.top=42;sun.shadow.camera.bottom=-42;sun.shadow.bias=-.00018;scene.add(sun);
+}renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<800?1.6:2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.18;renderer.physicallyCorrectLights=true;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;document.body.appendChild(renderer.domElement);scene.add(new THREE.HemisphereLight(0xc8efff,0x52613b,1.6));const sun=new THREE.DirectionalLight(0xfff0c5,2.1);sun.position.set(-25,38,15);sun.castShadow=true;sun.shadow.mapSize.set(innerWidth<800?1536:3072,innerWidth<800?1536:3072);sun.shadow.camera.left=-42;sun.shadow.camera.right=42;sun.shadow.camera.top=42;sun.shadow.camera.bottom=-42;sun.shadow.bias=-.00018;scene.add(sun);
 const mat=(color,roughness=1)=>new THREE.MeshStandardMaterial({color,roughness});
 const sand=mat(0xd9c18a),grass=mat(0x4f9b58),wood=mat(0x79502e),leaf=mat(0x277344),rock=mat(0x818b8b),berry=mat(0xe34c65),water= new THREE.MeshStandardMaterial({color:0x168da9,roughness:.35,metalness:.1});
 const oceanGeo=new THREE.PlaneGeometry(300,300,112,112),ocean=new THREE.Mesh(oceanGeo,water);ocean.rotation.x=-Math.PI/2;ocean.position.y=-1.25;ocean.receiveShadow=true;
 const oceanUniforms={uOceanTime:{value:0}};
 water.clearcoat=1;water.clearcoatRoughness=.08;water.roughness=.16;water.metalness=.18;water.envMapIntensity=1.15;
-water.onBeforeCompile=shader=>{shader.uniforms.uOceanTime=oceanUniforms.uOceanTime;shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nuniform float uOceanTime;');shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ntransformed.y += sin(position.x*.19+uOceanTime*1.25)*.13 + cos(position.y*.16+uOceanTime*.85)*.09;');};
+water.onBeforeCompile=shader=>{shader.uniforms.uOceanTime=oceanUniforms.uOceanTime;shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nuniform float uOceanTime;');shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\ntransformed.z += sin(position.x*.19+uOceanTime*1.25)*.13 + cos(position.y*.16+uOceanTime*.85)*.09;');};
 water.customProgramCacheKey=()=> 'survival-ocean-waves-v1';
 scene.add(ocean);
 const N=150,verts=[],inds=[],terrainColors=[],terrainUvs=[];
@@ -207,8 +206,7 @@ let temperature=24,weatherState="Limpo",weatherClock=0,stormClock=0,nightClock=0
 
 function saveSurvivalState(){
  try{
-  const state={version:1,player:{x:player.x,z:player.z,yaw:player.yaw,pitch:player.pitch},stats:{health,hunger,thirst,woodCount,stoneCount,fruitCount,fiberCount,meatCount,hideCount,fishCount,day,waterBottles,dirtyWater,cleanWater,boiledWater,rainCollector,rainProgress,toolLevel,hasRaft,hasFilter,temperature,weatherState,questStep},resources:resources.map(r=>!!r.active),waterPickups:waterPickups.map(p=>!!p.active)};
-  localStorage.setItem("survivalIslandSaveV1",JSON.stringify(state));
+  const state={version:1,player:{x:player.x,z:player.z,yaw:player.yaw,pitch:player.pitch},stats:{health,hunger,thirst,woodCount,stoneCount,fruitCount,fiberCount,meatCount,hideCount,fishCount,day,waterBottles,dirtyWater,cleanWater,boiledWater,rainCollector,rainProgress,toolLevel,hasRaft,hasFilter,temperature,weatherState,questStep},resources:resources.map(r=>!!r.active),waterPickups:waterPickups.map(p=>!!p.active)};  localStorage.setItem("survivalIslandSaveV1",JSON.stringify(state));
  }catch(e){}
 }
 function loadSurvivalState(){ try{
