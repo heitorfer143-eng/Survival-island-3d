@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#071b25">
+<title>Survival Island 3D</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,sans-serif}*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#071b25;color:#fff}canvas{display:block}
+#hud{position:fixed;inset:12px 12px auto;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none;z-index:3}.stat,.inventory{background:#07151dcc;border:1px solid #ffffff26;border-radius:12px;padding:8px 11px;backdrop-filter:blur(8px);font-size:13px}.stat b{display:block;font-size:15px}.thirstStat{min-width:150px}.waterTrack{height:7px;background:#163b4c;border-radius:9px;overflow:hidden;margin-top:5px}.waterFill{height:100%;width:100%;background:linear-gradient(90deg,#168fe5,#65d9ff);transition:width .25s}.thirstStat.low .waterFill{background:linear-gradient(90deg,#e58a22,#ff4545)}.inventory{margin-left:auto;display:flex;gap:12px;align-items:center}
+#cross{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:22px;color:#fff9;pointer-events:none;z-index:2}
+#hint{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#07151ddd;border:1px solid #ffffff30;padding:10px 16px;border-radius:12px;font-size:13px;text-align:center;max-width:90vw;z-index:4}
+#start{position:fixed;inset:0;z-index:10;display:grid;place-items:center;background:linear-gradient(#061722bb,#061722ee),radial-gradient(ellipse at center,#226b72,#071b25);padding:22px}
+.panel{width:min(460px,100%);padding:28px;border:1px solid #ffffff2b;border-radius:22px;background:#081923ed;box-shadow:0 24px 80px #0008;text-align:center}.panel h1{font-size:clamp(28px,7vw,44px);margin:0 0 8px}.panel p{color:#c1d5d8;line-height:1.5}.panel button,.action{border:0;border-radius:13px;background:#62d6a5;color:#06251d;font-weight:800;padding:13px 20px;font-size:16px;cursor:pointer}.tips{font-size:12px!important;color:#9bb7bc!important}
+#mobile{display:none;position:fixed;inset:auto 14px 18px;z-index:5;align-items:end;justify-content:space-between;pointer-events:none}.pad{width:124px;height:124px;border-radius:50%;background:#ffffff18;border:1px solid #ffffff45;position:relative;pointer-events:auto;touch-action:none;user-select:none;-webkit-user-select:none}.stick{position:absolute;width:48px;height:48px;border-radius:50%;background:#ffffff80;left:38px;top:38px}.buttons{display:grid;grid-template-columns:repeat(2,62px);gap:8px;pointer-events:auto}.action{padding:12px 4px;font-size:12px;min-height:48px;background:#e9c66b}.action.secondary{background:#9bd9ed}#drinkFx{position:fixed;inset:0;pointer-events:none;z-index:6;display:none;background:radial-gradient(ellipse at center,#65d9ff30,transparent 65%);animation:drinkPulse .7s ease-out}@keyframes drinkPulse{0%{opacity:0;transform:scale(.7)}35%{opacity:1}100%{opacity:0;transform:scale(1.15)}}#warning{position:fixed;top:86px;left:50%;transform:translateX(-50%);z-index:7;background:#17364beF;border:1px solid #70d8ff66;border-radius:12px;padding:9px 14px;font-weight:700;font-size:13px;display:none;text-align:center;max-width:90vw}
+
+#buildMenu{display:none;position:fixed;z-index:8;left:50%;top:50%;transform:translate(-50%,-50%);width:min(430px,92vw);max-height:78vh;overflow:auto;background:#081923f5;border:1px solid #ffffff35;border-radius:18px;padding:16px;box-shadow:0 20px 70px #0009}
+#buildMenu h2{margin:0 0 8px;font-size:20px}#buildMenu p{color:#b9d0d5;font-size:12px;margin:5px 0 12px}
+.buildGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.buildGrid button,.menuClose{border:1px solid #ffffff24;border-radius:11px;background:#173b43;color:#fff;padding:11px 7px;font-weight:700;font-size:12px}.buildGrid button:active{background:#28745d}.menuClose{width:100%;margin-top:10px;background:#74413a}
+#questHud{position:fixed;left:12px;bottom:62px;z-index:3;background:#07151ddd;border:1px solid #ffffff26;border-radius:10px;padding:8px 11px;font-size:12px;max-width:min(420px,90vw);pointer-events:none}#worldInfo{position:fixed;right:12px;top:112px;z-index:3;background:#07151dcc;border:1px solid #ffffff26;border-radius:10px;padding:7px 10px;font-size:11px;pointer-events:none}
+#mobile .action.build{background:#69d6a5}
+@media(max-width:800px){#questHud{bottom:210px;left:8px;font-size:10px}#worldInfo{top:150px;right:8px;font-size:10px}}
+
+@media(max-width:800px),(pointer:coarse){#mobile{display:flex}.inventory{margin-left:0}.stat{font-size:11px;padding:6px 8px}.stat b{font-size:13px}#hint{bottom:158px;font-size:12px}}
+
+#buildPanel{display:none;position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:8;width:min(560px,calc(100vw - 24px));padding:12px;background:#071923ed;border:1px solid #8bd7c866;border-radius:16px;box-shadow:0 12px 38px #0009;backdrop-filter:blur(10px)}
+#buildPanel.open{display:block}#buildPanel .buildTitle{font-weight:900;margin:0 0 9px;font-size:14px;display:flex;justify-content:space-between;gap:8px}
+#buildPanel .buildPieces{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
+#buildPanel button{border:1px solid #ffffff2a;border-radius:10px;padding:10px 5px;background:#183747;color:white;font-weight:750;font-size:12px}
+#buildPanel button.selected{background:#62d6a5;color:#06251d;border-color:#62d6a5}
+#buildPanel .buildActions{display:flex;gap:7px;margin-top:8px}#buildPanel .buildActions button{flex:1;background:#d5ad59;color:#251b08}
+#buildPanel .buildActions #cancelBuild{background:#344b58;color:white}
+@media(max-width:800px),(pointer:coarse){#buildPanel{bottom:166px}#hint{bottom:220px}}
+</style>
+</head>
+<body>
+<div id="hud">
+ <div class="stat">❤️ Vida <b id="health">100</b></div><div class="stat">🍖 Fome <b id="hunger">100</b></div><div class="stat thirstStat" id="thirstStat">💧 Hidratação <b><span id="thirst">100</span>%</b><div class="waterTrack"><div class="waterFill" id="waterFill"></div></div></div>
+ <div class="inventory">🪵 <b id="wood">0</b>　🪨 <b id="stone">0</b>　🍓 <b id="fruit">0</b>　🫙 <b id="waterBottles">0</b></div>
+</div>
+<div id="buildPanel"><div class="buildTitle"><span>🛠️ CONSTRUIR BASE</span><span id="buildCost">Escolha uma peça</span></div><div class="buildPieces"><button data-piece="foundation">🟫 Fundação<br>5🪵 2🪨</button><button data-piece="wall">🧱 Parede<br>4🪵</button><button data-piece="door">🚪 Porta<br>6🪵</button><button data-piece="roof">🏠 Telhado<br>5🪵 1🪨</button></div><div class="buildActions"><button id="rotateBuild">↻ Girar</button><button id="placeBuild">＋ Construir</button><button id="cancelBuild">Fechar</button></div></div>
+<div id="worldInfo">🌡️ <span id="temperature">24</span>°C · ☀️ <span id="weather">Limpo</span></div>
+<div id="buildMenu"><h2>🛠️ Construção e fabricação</h2><p>Escolha uma estrutura. Ela será posicionada à sua frente. Os materiais são consumidos ao construir.</p><div class="buildGrid">
+<button data-build="foundation">🪵 Fundação<br>6 madeira</button><button data-build="wall">🧱 Parede<br>4 madeira</button>
+<button data-build="door">🚪 Porta<br>5 madeira</button><button data-build="roof">🏠 Telhado<br>5 madeira</button>
+<button data-build="chest">📦 Baú<br>6 madeira + 2 pedra</button><button data-build="bed">🛏️ Cama<br>5 madeira + 3 fibra</button>
+<button data-build="workbench">🔨 Bancada<br>8 madeira + 3 pedra</button><button data-build="torch">🔥 Tocha<br>2 madeira + 1 pedra</button>
+<button data-build="raft">🛶 Jangada<br>12 madeira + 4 fibra</button><button data-build="spear">🗡️ Lança<br>3 madeira + 2 pedra</button>
+<button data-build="axe">🪓 Machado<br>4 madeira + 3 pedra</button><button data-build="filter">💧 Filtro<br>5 madeira + 4 pedra</button>
+</div><button class="menuClose" id="closeBuild">FECHAR</button></div>
+<div id="drinkFx"></div><div id="warning"></div><div id="cross">+</div><div id="hint">Explore a ilha e aproxime-se dos recursos para coletar</div><div id="questHud">Missão: colete 6 madeiras e 3 pedras.</div>
+<div id="mobile"><div class="pad" id="pad"><div class="stick" id="stick"></div></div><div class="buttons"><button class="action" id="collect">COLETAR</button><button class="action secondary" id="drink">BEBER</button><button class="action secondary" id="eat">COMER</button><button class="action secondary" id="jump">PULAR</button><button class="action" id="craft">FOGUEIRA</button><button class="action secondary" id="purify">FERVER</button><button class="action" id="collector">COLETOR</button><button class="action build" id="build">CONSTRUIR</button><button class="action secondary" id="fish">PESCAR</button><button class="action" id="buildToggle">BASE</button></div></div>
+<div id="start"><div class="panel"><h1>🏝️ Survival Island 3D</h1><p>Você acordou em uma ilha desconhecida. Colete madeira, pedras e frutas, cuide da fome e da sede e sobreviva o máximo que conseguir.</p><button id="play">COMEÇAR A SOBREVIVER</button><p class="tips">PC: WASD · Mouse · Espaço pular · E coletar/pegar água · G beber · F comer · C fogueira · V ferver água<br>Celular: joystick para andar · arraste o lado direito para olhar</p></div></div>
+<script>
+window.__survivalStarted = false;
+window.__survivalReady = false;
+function showBootError(message) {
+  let box = document.getElementById('bootError');
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'bootError';
+    box.style.cssText = 'position:fixed;z-index:30;left:12px;right:12px;bottom:12px;padding:12px 14px;border-radius:12px;background:#5b2020;color:white;font:14px system-ui;white-space:pre-wrap';
+    document.body.appendChild(box);
+  }
+  box.textContent = 'Não foi possível iniciar o jogo 3D. ' + message;
+}
+window.addEventListener('error', e => showBootError((e.message || 'Erro no carregamento do jogo.') + (e.filename ? '\\n' + e.filename.split('/').pop() + ':' + e.lineno + ':' + e.colno : '')));
+window.addEventListener('unhandledrejection', e => showBootError(String(e.reason || 'Falha ao carregar o motor 3D.')));
+document.getElementById('play').addEventListener('click', () => {
+  window.__survivalStarted = true;
+  if (!window.__survivalReady) {
+    document.getElementById('play').textContent = 'CARREGANDO O JOGO...';
+    setTimeout(() => {
+      if (!window.__survivalReady) showBootError('O motor 3D não terminou de carregar. Verifique a conexão e tente atualizar a página.');
+    }, 2500);
+  }
+});
+</script>
+<script type="module">
+// Babylon.js passa a ser o motor 3D. Esta camada mantém a API interna usada
+// pelo jogo para migrar o renderizador sem reescrever os sistemas de sobrevivência.
+async function loadBabylon(){
+ const sources=['https://cdn.babylonjs.com/babylon.js','https://cdn.jsdelivr.net/npm/babylonjs@7.54.3/babylon.js'];
+ let lastError;
+ for(const src of sources){
+  try{
+   await new Promise((resolve,reject)=>{
+    if(window.BABYLON){resolve();return}
+    const script=document.createElement('script');script.src=src;script.async=true;
+    script.onload=()=>window.BABYLON?resolve():reject(new Error('Biblioteca carregada sem expor BABYLON'));
+    script.onerror=()=>reject(new Error('Falha ao carregar '+src));
+    document.head.appendChild(script);
+   });
+   if(window.BABYLON)return window.BABYLON;
+  }catch(e){lastError=e}
+ }
+ throw new Error('Não foi possível carregar o Babylon.js pelos servidores disponíveis. '+String(lastError?.message||lastError));
+}
+const B=await loadBabylon();
+const canvas=document.createElement('canvas');canvas.id='survival3d';
+canvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;z-index:0';
+document.body.insertBefore(canvas,document.body.firstChild);
+let engine;
+try{engine=new B.Engine(canvas,true,{preserveDrawingBuffer:false,stencil:true,disableWebGL2Support:false,powerPreference:'high-performance'});}
+catch(firstEngineError){
+ try{engine=new B.Engine(canvas,false,{preserveDrawingBuffer:false,stencil:false,disableWebGL2Support:true,powerPreference:'low-power'});}
+ catch(secondEngineError){throw new Error('O Babylon.js não conseguiu iniciar WebGL neste navegador. Atualize o navegador e feche outras abas 3D. '+String(secondEngineError?.message||secondEngineError))}
+}
+const sceneNative=new B.Scene(engine);
+sceneNative.clearColor=new B.Color4(.53,.78,.84,1);
+sceneNative.skipPointerMovePicking=true;
+class CompatColor{
+ constructor(hex=0xffffff,onChange=null){this._c=B.Color3.FromHexString('#'+Number(hex).toString(16).padStart(6,'0'));this._onChange=onChange}
+ get r(){return this._c.r} get g(){return this._c.g} get b(){return this._c.b}
+ sync(){this._onChange?.(this._c);return this}
+ setHex(hex){this._c=B.Color3.FromHexString('#'+Number(hex).toString(16).padStart(6,'0'));return this.sync()}
+ setHSL(h,s,l){const c=B.Color3.FromHSV(h*360,s,l);this._c=c;sceneNative.clearColor=new B.Color4(c.r,c.g,c.b,1);return this}
+ copy(other){this._c=new B.Color3(other.r,other.g,other.b);return this.sync()}
+ lerp(other,t){this._c=B.Color3.Lerp(this._c,new B.Color3(other.r,other.g,other.b),t);return this}
+}
+const colorFrom=(v)=>typeof v==='number'?B.Color3.FromHexString('#'+v.toString(16).padStart(6,'0')):new B.Color3(v?.r??1,v?.g??1,v?.b??1);
+class CompatMaterial{
+ constructor(opts={},basic=false){
+  this.native=new B.StandardMaterial('mat_'+Math.random().toString(36).slice(2),sceneNative);
+  this.native.diffuseColor=colorFrom(opts.color??0xffffff);
+  this.native.specularColor=new B.Color3(.12,.12,.12);
+  this.native.specularPower=opts.roughness===undefined?64:Math.max(2,(1-opts.roughness)*120);
+  this.native.disableLighting=basic;
+  this.native.emissiveColor=basic?colorFrom(opts.color??0xffffff):new B.Color3(0,0,0);
+  this.native.alpha=opts.opacity??1;
+  this.native.backFaceCulling=(opts.side===2||opts.side===1)?false:true;
+  this.native.useVertexColors=!!opts.vertexColors;
+  this.native.wireframe=!!opts.wireframe;
+  this._basic=basic;this._color=new CompatColor(opts.color??0xffffff,c=>{this.native.diffuseColor=c;if(this._basic)this.native.emissiveColor=c});
+  Object.defineProperty(this,'color',{get:()=>this._color,set:v=>{this._color.copy(v)}});
+  Object.defineProperty(this,'transparent',{get:()=>this.native.alpha<1,set:v=>{if(!v&&this.native.alpha<1)this.native.alpha=1}});
+  Object.defineProperty(this,'opacity',{get:()=>this.native.alpha,set:v=>{this.native.alpha=v}});
+  this.depthWrite=opts.depthWrite??true;this.flatShading=!!opts.flatShading;
+ }
+ clone(){return new CompatMaterial({color:this._color,roughness:1-this.native.specularPower/120,opacity:this.native.alpha,side:this.native.backFaceCulling?0:2,vertexColors:this.native.useVertexColors},this._basic)}
+}
+class Geometry{constructor(kind,opts={}){this.kind=kind;this.opts=opts;this.attrs={};this.indices=null}}
+class BufferGeometry extends Geometry{
+ constructor(){super('buffer')}
+ setAttribute(k,v){this.attrs[k]=v;return this}
+ setIndex(v){this.indices=v;return this}
+ computeVertexNormals(){this.computeNormals=true}
+}
+class Float32BufferAttribute{constructor(array,itemSize){this.array=array;this.itemSize=itemSize}}
+function decorateNode(n,isMesh=false){
+ n.scale=n.scaling;
+ if(!n.scale.setScalar)n.scale.setScalar=v=>n.scaling.set(v,v,v);
+ n.isMesh=isMesh;
+ n.castShadow=false;n.receiveShadow=false;
+ n.userData=n.userData||{};
+ n.add=function(child){child.parent=n;return this};
+ n.traverse=function(fn){fn(this);(this.getChildMeshes?.(false)||[]).forEach(fn);(this.getChildren?.(false)||[]).filter(c=>!c.getChildMeshes).forEach(c=>c.traverse?c.traverse(fn):fn(c))};
+ return n;
+}
+function buildGeometry(g){
+ const o=g.opts||{},k=g.kind;
+ if(k==='plane')return B.MeshBuilder.CreatePlane('plane',{width:o.width,height:o.height,sideOrientation:B.Mesh.DOUBLESIDE},sceneNative);
+ if(k==='sphere')return B.MeshBuilder.CreateSphere('sphere',{diameter:2*(o.radius??1),segments:Math.max(4,o.widthSegments??16)},sceneNative);
+ if(k==='icosa')return B.MeshBuilder.CreatePolyhedron('ico',{type:3,size:o.radius??1},sceneNative);
+ if(k==='dodeca')return B.MeshBuilder.CreatePolyhedron('dodeca',{type:2,size:o.radius??1},sceneNative);
+ if(k==='cylinder')return B.MeshBuilder.CreateCylinder('cylinder',{height:o.height,diameterTop:2*(o.radiusTop??o.radiusBottom??1),diameterBottom:2*(o.radiusBottom??o.radiusTop??1),tessellation:o.radialSegments??12},sceneNative);
+ if(k==='box')return B.MeshBuilder.CreateBox('box',{width:o.width,height:o.height,depth:o.depth},sceneNative);
+ if(k==='cone')return B.MeshBuilder.CreateCylinder('cone',{height:o.height,diameterTop:0,diameterBottom:2*o.radius,tessellation:o.radialSegments??8},sceneNative);
+ if(k==='torus')return B.MeshBuilder.CreateTorus('torus',{diameter:2*(o.radius??1),thickness:o.tube??.2,tessellation:o.radialSegments??16},sceneNative);
+ if(k==='circle')return B.MeshBuilder.CreateDisc('circle',{radius:o.radius,tessellation:o.segments??32,sideOrientation:B.Mesh.DOUBLESIDE},sceneNative);
+ if(k==='ring'){
+  const positions=[],indices=[],seg=o.segments??48,inner=o.inner??.5,outer=o.outer??1;
+  for(let i=0;i<=seg;i++){const a=i/seg*Math.PI*2,c=Math.cos(a),s=Math.sin(a);positions.push(inner*c,inner*s,0,outer*c,outer*s,0);if(i<seg){const q=i*2;indices.push(q,q+1,q+2,q+1,q+3,q+2)}}
+  const m=new B.Mesh('ring',sceneNative),vd=new B.VertexData();vd.positions=positions;vd.indices=indices;B.VertexData.ComputeNormals(positions,indices,vd.normals=[]);vd.applyToMesh(m);return m;
+ }
+ if(k==='buffer'){
+  const m=new B.Mesh('terrain',sceneNative),p=g.attrs.position?.array||[],idx=g.indices||[];
+  m.setVerticesData(B.VertexBuffer.PositionKind,p, true,3);m.setIndices(idx);
+  if(g.attrs.color){const rgb=g.attrs.color.array,rgba=[];for(let i=0;i<rgb.length;i+=3)rgba.push(rgb[i],rgb[i+1],rgb[i+2],1);m.setVerticesData(B.VertexBuffer.ColorKind,rgba,true,4)}
+  const normals=[];B.VertexData.ComputeNormals(p,idx,normals);m.setVerticesData(B.VertexBuffer.NormalKind,normals);
+  return m;
+ }
+ return B.MeshBuilder.CreateBox('fallback',{size:1},sceneNative);
+}
+class CompatMesh{
+ constructor(geometry,material){const native=buildGeometry(geometry);native.material=material?.native||null;decorateNode(native,true);return native}
+}
+class CompatGroup{
+ constructor(){return decorateNode(new B.TransformNode('group',sceneNative),false)}
+}
+class CompatScene{
+ constructor(){this.native=sceneNative;this.background=new CompatColor(0x87c8d6,c=>{sceneNative.clearColor=new B.Color4(c.r,c.g,c.b,1)});this.fog={color:new CompatColor(0x87c8d6,c=>{sceneNative.fogColor=c}),near:38,far:115};sceneNative.fogMode=B.Scene.FOGMODE_EXP2;sceneNative.fogDensity=.008;sceneNative.fogColor=new B.Color3(.53,.78,.84)}
+ add(){/* Babylon registra os nós na cena ao criá-los. */}
+ remove(o){o?.dispose?.(false,false)}
+}
+class CompatCamera{
+ constructor(fov,aspect,near,far){const c=new B.FreeCamera('playerCamera',new B.Vector3(0,2,0),sceneNative);c.fov=fov*Math.PI/180;c.minZ=near;c.maxZ=far;c.rotation=new B.Vector3(0,0,0);c.aspect=aspect;c.updateProjectionMatrix=()=>{};c.rotation.order='YXZ';sceneNative.activeCamera=c;return c}
+}
+class CompatRenderer{
+ constructor(){this.domElement=canvas;this.shadowMap={enabled:true,type:0,mapSize:{width:1024,height:1024}};this.outputColorSpace=0;this.toneMapping=0;this.toneMappingExposure=1}
+ setPixelRatio(v){engine.setHardwareScalingLevel(1/Math.max(.5,v))}
+ setSize(w,h){engine.setSize(w,h)}
+ render(){sceneNative.render()}
+}
+class CompatClock{constructor(){this.last=performance.now()}getDelta(){const n=performance.now(),d=(n-this.last)/1000;this.last=n;return d}}
+const THREE={
+ Scene:CompatScene,Color:CompatColor,Fog:class{constructor(color,near,far){this.color=new CompatColor(color,c=>{sceneNative.fogColor=c});this.near=near;this.far=far;sceneNative.fogMode=B.Scene.FOGMODE_EXP2;sceneNative.fogDensity=2/Math.max(1,far-near)}},
+ PerspectiveCamera:CompatCamera,WebGLRenderer:CompatRenderer,SRGBColorSpace:0,ACESFilmicToneMapping:0,PCFSoftShadowMap:0,
+ HemisphereLight:class extends B.HemisphericLight{constructor(a,b,intensity){super('ambient',new B.Vector3(0,1,0),sceneNative);this.diffuse=colorFrom(a);this.groundColor=colorFrom(b);this.intensity=intensity}},
+ DirectionalLight:class extends B.DirectionalLight{constructor(color,intensity){super('sun',new B.Vector3(-1,-2,1),sceneNative);this.diffuse=colorFrom(color);this.intensity=intensity;this.shadow={mapSize:{set(){}},camera:{left:-42,right:42,top:42,bottom:-42},bias:0};this.castShadow=false}},
+ PointLight:class extends B.PointLight{constructor(color,intensity,distance){super('point',B.Vector3.Zero(),sceneNative);this.diffuse=colorFrom(color);this.intensity=intensity;this.range=distance}},
+ MeshStandardMaterial:class extends CompatMaterial{constructor(o){super(o,false)}},
+ MeshBasicMaterial:class extends CompatMaterial{constructor(o){super(o,true)}},
+ ShaderMaterial:class extends CompatMaterial{constructor(o){super({color:0x8ac8d5,side:2},true)}},
+ PlaneGeometry:class extends Geometry{constructor(width,height,segmentsX=1,segmentsY=1){super('plane',{width,height,segmentsX,segmentsY})}},
+ SphereGeometry:class extends Geometry{constructor(radius=1,widthSegments=16,heightSegments=12){super('sphere',{radius,widthSegments,heightSegments})}},
+ IcosahedronGeometry:class extends Geometry{constructor(radius=1,detail=0){super('icosa',{radius,detail})}},
+ RingGeometry:class extends Geometry{constructor(inner,outer,segments=32){super('ring',{inner,outer,segments})}},
+ CylinderGeometry:class extends Geometry{constructor(radiusTop=1,radiusBottom=1,height=1,radialSegments=12){super('cylinder',{radiusTop,radiusBottom,height,radialSegments})}},
+ DodecahedronGeometry:class extends Geometry{constructor(radius=1,detail=0){super('dodeca',{radius,detail})}},
+ BoxGeometry:class extends Geometry{constructor(width=1,height=1,depth=1){super('box',{width,height,depth})}},
+ ConeGeometry:class extends Geometry{constructor(radius=1,height=1,radialSegments=8){super('cone',{radius,height,radialSegments})}},
+ TorusGeometry:class extends Geometry{constructor(radius=1,tube=.4,radialSegments=12){super('torus',{radius,tube,radialSegments})}},
+ CircleGeometry:class extends Geometry{constructor(radius=1,segments=32){super('circle',{radius,segments})}},
+ BufferGeometry,Float32BufferAttribute,Mesh:CompatMesh,Group:CompatGroup,
+ Vector3:B.Vector3,MathUtils:{smoothstep:(x,min,max)=>{const t=Math.max(0,Math.min(1,(x-min)/(max-min)));return t*t*(3-2*t)}},
+ BackSide:1,DoubleSide:2,Clock:CompatClock
+};
+const $=id=>document.getElementById(id),scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,180);
+camera.rotation.order='YXZ';
+const renderer=new THREE.WebGLRenderer();
+renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<800?1.25:1.65));renderer.setSize(innerWidth,innerHeight);
+const sceneLights=[];
+scene.add(new THREE.HemisphereLight(0xc8efff,0x52613b,1.6));const sun=new THREE.DirectionalLight(0xfff0c5,2.1);sun.position.set(-25,38,15);sun.castShadow=true;scene.add(sun);
+const mat=(color,roughness=1)=>new THREE.MeshStandardMaterial({color,roughness});
+const $=id=>document.getElementById(id),scene=new THREE.Scene();scene.background=new THREE.Color(0x8ac8d5);scene.fog=new THREE.Fog(0x8ac8d5,38,115);
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,180);camera.rotation.order='YXZ';
+let renderer;
+try{
+ renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+}catch(primaryRendererError){
+ try{renderer=new THREE.WebGLRenderer({canvas:document.createElement('canvas'),antialias:false,powerPreference:'low-power',precision:'mediump'});}
+ catch(fallbackRendererError){throw new Error('O navegador não conseguiu criar um contexto WebGL. Atualize o navegador, feche outras abas 3D e tente novamente. '+String(fallbackRendererError?.message||fallbackRendererError))}
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio,innerWidth<800?1.25:1.65));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.12;renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;renderer.shadowMap.mapSize={width:innerWidth<800?1024:2048,height:innerWidth<800?1024:2048};document.body.appendChild(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xc8efff,0x52613b,1.6));const sun=new THREE.DirectionalLight(0xfff0c5,2.1);sun.position.set(-25,38,15);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);sun.shadow.camera.left=-42;sun.shadow.camera.right=42;sun.shadow.camera.top=42;sun.shadow.camera.bottom=-42;sun.shadow.bias=-.00018;scene.add(sun);
+const mat=(color,roughness=1)=>new THREE.MeshStandardMaterial({color,roughness});
+const sand=mat(0xd9c18a),grass=mat(0x4f9b58),wood=mat(0x79502e),leaf=mat(0x277344),rock=mat(0x818b8b),berry=mat(0xe34c65),water= new THREE.MeshStandardMaterial({color:0x168da9,roughness:.35,metalness:.1});
+const oceanGeo=new THREE.PlaneGeometry(300,300,72,72),ocean=new THREE.Mesh(oceanGeo,water);ocean.rotation.x=-Math.PI/2;ocean.position.y=-1.25;ocean.receiveShadow=true;
+const oceanUniforms={uOceanTime:{value:0}}; // animação suave aplicada pelo loop Babylon.js
+scene.add(ocean);
+const N=100,verts=[],inds=[],terrainColors=[];
+const sandColor=new THREE.Color(0xd9c18a),lushColor=new THREE.Color(0x3e8550),highColor=new THREE.Color(0x557b48),colorTmp=new THREE.Color();
+for(let z=0;z<=N;z++)for(let x=0;x<=N;x++){
+ let px=(x/N-.5)*76,pz=(z/N-.5)*76,r=Math.hypot(px,pz),edge=Math.max(0,1-r/34),h=-1.1+Math.pow(edge,.48)*3.3+Math.exp(-((px-8)**2+(pz+4)**2)/100)*3+Math.exp(-((px+13)**2+(pz-9)**2)/70)*2;
+ verts.push(px,h,pz);
+ let beach=THREE.MathUtils.smoothstep(r,25,33),hill=THREE.MathUtils.smoothstep(h,2.1,4.7);
+ colorTmp.copy(lushColor).lerp(sandColor,beach).lerp(highColor,hill*.62);
+ let variation=1+Math.sin(px*1.7+pz*.8)*.025+Math.cos(pz*2.1-px*.5)*.02;
+ terrainColors.push(colorTmp.r*variation,colorTmp.g*variation,colorTmp.b*variation);
+}
+for(let z=0;z<N;z++)for(let x=0;x<N;x++){let a=z*(N+1)+x,b=a+1,c=a+N+1,d=c+1;inds.push(a,c,b,b,c,d)}
+const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(terrainColors,3));geo.setIndex(inds);geo.computeVertexNormals();const island=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.96}));island.receiveShadow=true;scene.add(island);
+function groundY(x,z){let r=Math.hypot(x,z),edge=Math.max(0,1-r/34);return -1.1+Math.pow(edge,.48)*3.3+Math.exp(-((x-8)**2+(z+4)**2)/100)*3+Math.exp(-((x+13)**2+(z-9)**2)/70)*2}
+
+// Céu atmosférico, sol visível e nuvens leves: decoração de baixo custo para celular.
+const skyGeo=new THREE.SphereGeometry(145,32,18);
+const skyMat=new THREE.MeshBasicMaterial({color:0x70aeca,side:THREE.BackSide});
+const sky=new THREE.Mesh(skyGeo,skyMat);sky.frustumCulled=false;scene.add(sky);
+const sunDisc=new THREE.Mesh(new THREE.SphereGeometry(2.1,20,16),new THREE.MeshBasicMaterial({color:0xffe6a6}));sunDisc.position.set(-65,78,-95);scene.add(sunDisc);
+const clouds=[];
+function addCloud(x,y,z,scale=1){const group=new THREE.Group(),cloudMat=new THREE.MeshStandardMaterial({color:0xf4fbff,roughness:1,transparent:true,opacity:.78,flatShading:true});for(let i=0;i<6;i++){const puff=new THREE.Mesh(new THREE.IcosahedronGeometry(.85+(i%3)*.18,1),cloudMat);puff.position.set((i-2.5)*.72,(i%2)*.28+Math.sin(i)*.12,Math.cos(i*1.7)*.48);puff.scale.y=.55;puff.castShadow=false;group.add(puff)}group.position.set(x,y,z);group.scale.setScalar(scale);scene.add(group);clouds.push({obj:group,speed:.45+scale*.16})}
+addCloud(-32,17,-28,1.8);addCloud(18,21,-36,1.45);addCloud(38,15,8,1.2);addCloud(-18,24,34,1.6);
+const beachFoam=new THREE.Mesh(new THREE.RingGeometry(32.2,33.1,96),new THREE.MeshBasicMaterial({color:0xe3f6ed,transparent:true,opacity:.22,side:THREE.DoubleSide}));beachFoam.rotation.x=-Math.PI/2;beachFoam.position.y=-.88;scene.add(beachFoam);
+
+const resources=[];const waterSources=[];const waterPickups=[];
+function addTree(x,z){let y=groundY(x,z);if(y<-.3)return;let g=new THREE.Group();let trunk=new THREE.Mesh(new THREE.CylinderGeometry(.22,.34,2.4,7),wood);trunk.position.y=1.1;trunk.castShadow=true;g.add(trunk);for(let i=0;i<3;i++){let crown=new THREE.Mesh(new THREE.IcosahedronGeometry(1.15-i*.12,2),leaf);crown.position.set((i-1)*.48,2.45+i*.35,0);crown.castShadow=true;g.add(crown)}g.position.set(x,y,z);scene.add(g);resources.push({kind:'wood',obj:g,amount:3,label:'Árvore',active:true})}
+function addRock(x,z){let y=groundY(x,z);if(y<-.2)return;let m=new THREE.Mesh(new THREE.DodecahedronGeometry(.75,0),rock);m.position.set(x,y+.45,z);m.scale.set(1.2,.8,1);m.castShadow=true;scene.add(m);resources.push({kind:'stone',obj:m,amount:2,label:'Pedra',active:true})}
+function addFruit(x,z){let y=groundY(x,z);if(y<-.2)return;let g=new THREE.Group();let bush=new THREE.Mesh(new THREE.IcosahedronGeometry(.62,1),leaf);bush.position.y=.55;g.add(bush);for(let i=0;i<4;i++){let f=new THREE.Mesh(new THREE.SphereGeometry(.13,8,8),berry);f.position.set(Math.cos(i*1.6)*.45,.65+(i%2)*.25,Math.sin(i*1.6)*.45);g.add(f)}g.position.set(x,y,z);scene.add(g);resources.push({kind:'fruit',obj:g,amount:2,label:'Frutas',active:true})}
+let seed=42;function rand(){seed=(seed*1664525+1013904223)>>>0;return seed/4294967296}
+for(let i=0;i<52;i++){let a=rand()*Math.PI*2,r=7+rand()*23,x=Math.cos(a)*r,z=Math.sin(a)*r;if(groundY(x,z)>.1)addTree(x,z)}
+for(let i=0;i<27;i++){let a=rand()*Math.PI*2,r=5+rand()*27,x=Math.cos(a)*r,z=Math.sin(a)*r;addRock(x,z)}
+for(let i=0;i<17;i++){let a=rand()*Math.PI*2,r=6+rand()*24,x=Math.cos(a)*r,z=Math.sin(a)*r;addFruit(x,z)}
+const player={x:0,z:0,y:groundY(0,0)+1.65,vy:0,yaw:0,pitch:0,onGround:true};camera.position.set(player.x,player.y,player.z);
+
+const buildPanel=$('buildPanel'),buildPieces=[...document.querySelectorAll('[data-piece]')];
+const pieceInfo={
+ foundation:{label:'Fundação',wood:5,stone:2,layer:0},
+ wall:{label:'Parede',wood:4,stone:0,layer:1},
+ door:{label:'Porta',wood:6,stone:0,layer:1},
+ roof:{label:'Telhado',wood:5,stone:1,layer:2}
+};
+let buildMode=false,selectedPiece='foundation',buildRotation=0,preview=null;
+const builtStructures=[];
+function makeStructure(type,x,z,rotation,addToScene=true){
+ const g=new THREE.Group(),timber=new THREE.MeshStandardMaterial({color:0x79502e,roughness:.9}),plank=new THREE.MeshStandardMaterial({color:0xa87945,roughness:.86}),stoneMat=new THREE.MeshStandardMaterial({color:0x777f7d,roughness:1});
+ const box=(w,h,d,material,y)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.y=y;m.castShadow=true;m.receiveShadow=true;g.add(m);return m};
+ if(type==='foundation'){box(3,.24,3,stoneMat,.12);box(2.86,.12,2.86,plank,.3)}
+ if(type==='wall'){box(3,2.5,.16,timber,1.55);for(let i=0;i<5;i++)box(.045,2.35,.19,plank,1.55).position.x=-1.2+i*.6}
+ if(type==='door'){box(.22,2.5,.2,timber,1.55).position.x=-1.39;box(.22,2.5,.2,timber,1.55).position.x=1.39;box(3,.22,.2,timber,2.69);box(1.05,.12,.22,plank,1.28).position.x=.82}
+ if(type==='roof'){box(3,.18,3,plank,2.85);for(let i=0;i<4;i++){const beam=new THREE.Mesh(new THREE.BoxGeometry(.12,.28,3.05),timber);beam.position.set(-1.2+i*.8,2.68,0);beam.castShadow=true;g.add(beam)}}
+ g.position.set(x,groundY(x,z),z);g.rotation.y=rotation;g.userData={type,x,z,rotation,layer:pieceInfo[type].layer};
+ if(addToScene)scene.add(g);return g;
+}
+function saveBase(){try{localStorage.setItem('survivalIslandBaseV1',JSON.stringify(builtStructures.map(s=>s.userData)))}catch(e){}}
+function restoreBase(){try{const saved=JSON.parse(localStorage.getItem('survivalIslandBaseV1')||'[]');for(const s of saved){if(!pieceInfo[s.type]||!Number.isFinite(s.x)||!Number.isFinite(s.z))continue;const g=makeStructure(s.type,s.x,s.z,s.rotation||0);builtStructures.push(g)}}catch(e){}}
+function cellOccupied(x,z,layer){return builtStructures.some(s=>Math.round(s.userData.x/3)===Math.round(x/3)&&Math.round(s.userData.z/3)===Math.round(z/3)&&s.userData.layer===layer)}
+function buildPosition(){const dist=4.5,fx=-Math.sin(player.yaw),fz=-Math.cos(player.yaw),x=Math.round((player.x+fx*dist)/3)*3,z=Math.round((player.z+fz*dist)/3)*3;return{x,z,rotation:Math.round(player.yaw/(Math.PI/2))*(Math.PI/2)}}
+function refreshBuildUI(){buildPieces.forEach(b=>b.classList.toggle('selected',b.dataset.piece===selectedPiece));const p=pieceInfo[selectedPiece];$('buildCost').textContent=p.wood+' madeira'+(p.stone?' + '+p.stone+' pedra':'');}
+function toggleBuild(){if(buildMode){closeBuild();return}buildMode=true;buildPanel.classList.add('open');if(!selectedPiece)selectedPiece='foundation';refreshBuildUI();if(preview)scene.remove(preview);preview=makeStructure(selectedPiece,0,0,0);preview.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=.42;o.material.depthWrite=false}});$('hint').textContent='Escolha uma peça, gire e construa. PC: R girar · Enter construir · Esc fechar.'}
+function closeBuild(){buildMode=false;buildPanel.classList.remove('open');if(preview){scene.remove(preview);preview=null}}
+function rotateBuild(){buildRotation=(buildRotation+Math.PI/2)%(Math.PI*2);if(preview)preview.rotation.y=buildRotation}
+function chooseBuild(type){selectedPiece=type;refreshBuildUI();if(preview){scene.remove(preview);preview=makeStructure(type,0,0,0);preview.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=.42;o.material.depthWrite=false}})}}
+function placeBuild(){if(!buildMode)return;const info=pieceInfo[selectedPiece],p=buildPosition(),layer=info.layer;if(woodCount<info.wood||stoneCount<info.stone){$('hint').textContent='Materiais insuficientes para '+info.label.toLowerCase()+'.';return}if(Math.hypot(p.x-player.x,p.z-player.z)>7||Math.hypot(p.x,p.z)>31){$('hint').textContent='Não é possível construir nesse local.';return}if(Math.abs(groundY(p.x+1.3,p.z)-groundY(p.x-1.3,p.z))>1.05||Math.abs(groundY(p.x,p.z+1.3)-groundY(p.x,p.z-1.3))>1.05){$('hint').textContent='Terreno muito inclinado. Escolha um local mais plano.';return}if(cellOccupied(p.x,p.z,layer)){ $('hint').textContent='Já existe uma peça desse nível nesse espaço.';return}woodCount-=info.wood;stoneCount-=info.stone;const g=makeStructure(selectedPiece,p.x,p.z,p.rotation);builtStructures.push(g);saveBase();updateHud();$('hint').textContent=info.label+' construída! Sua base está crescendo.'}
+buildPieces.forEach(b=>b.addEventListener('click',()=>chooseBuild(b.dataset.piece)));
+$('buildToggle').onclick=toggleBuild;$('rotateBuild').onclick=rotateBuild;$('placeBuild').onclick=placeBuild;$('cancelBuild').onclick=closeBuild;
+restoreBase();
+
+const keys={};let started=!!window.__survivalStarted,health=100,hunger=100,thirst=100,woodCount=0,stoneCount=0,fruitCount=0,day=0,waterBottles=0,dirtyWater=0,cleanWater=0,boiledWater=0,rainCollector=false,rainProgress=0,warningText='',warningUntil=0;
+function updateHud(){$('health').textContent=Math.ceil(health);$('hunger').textContent=Math.ceil(hunger);$('thirst').textContent=Math.ceil(thirst);$('waterFill').style.width=thirst+'%';$('thirstStat').classList.toggle('low',thirst<=25);$('wood').textContent=woodCount;$('stone').textContent=stoneCount;$('fruit').textContent=fruitCount;$('waterBottles').textContent=waterBottles;let wi=$('worldInfo');if(wi)wi.innerHTML='🌡️ <span id="temperature">'+temperature+'</span>°C · <span id="weather">'+weatherState+'</span><br>🌿 '+fiberCount+' fibras · 🍖 '+meatCount+' carnes · 🐟 '+fishCount+' peixes · 🐾 '+hideCount+' couro'}
+function nearest(){let best=null,d=3.2;for(const r of resources){if(!r.active)continue;let p=r.obj.position,dist=Math.hypot(player.x-p.x,player.z-p.z);if(dist<d){d=dist;best=r}}return best}
+function nearestWater(){let best=null,d=4.2;for(const w of waterSources){let dist=Math.hypot(player.x-w.x,player.z-w.z);if(dist<d){d=dist;best=w}}return best}
+function nearestPickup(){let best=null,d=3.2;for(const p of waterPickups){if(!p.active)continue;let dist=Math.hypot(player.x-p.obj.position.x,player.z-p.obj.position.z);if(dist<d){d=dist;best=p}}return best}
+function collect(){let bottle=nearestPickup();if(bottle){bottle.active=false;scene.remove(bottle.obj);waterBottles++;cleanWater++;updateHud();$('hint').textContent='Garrafa encontrada! Água potável armazenada.';return}let source=nearestWater();if(source){if(hasFilter){cleanWater++;$('hint').textContent='Filtro instalado: água filtrada e potável coletada.'}else{dirtyWater++;waterBottles=Math.max(1,waterBottles);$('hint').textContent='Água coletada do '+source.label+' (suja). Ferva antes de beber!'}updateHud();return}let r=nearest();if(!r){$('hint').textContent='Nenhum recurso por perto. Explore a ilha!';return}r.active=false;scene.remove(r.obj);if(r.kind==='wood')woodCount+=r.amount+(toolLevel>=2?2:0);if(r.kind==='stone')stoneCount+=r.amount;if(r.kind==='fruit')fruitCount+=r.amount;updateHud();$('hint').textContent=r.label+' coletada!'}
+function drink(){if(boiledWater>0){boiledWater--;thirst=Math.min(100,thirst+38);drinkAnimation();$('hint').textContent='Você bebeu água fervida. Hidratação recuperada!'}else if(cleanWater>0){cleanWater--;thirst=Math.min(100,thirst+30);drinkAnimation();$('hint').textContent='Você bebeu água potável.'}else if(dirtyWater>0){dirtyWater--;thirst=Math.min(100,thirst+28);health=Math.max(0,health-8);drinkAnimation();$('hint').textContent='Você bebeu água suja! Risco de doença: perdeu vida.'}else if(waterBottles>0){$('hint').textContent='A garrafa está vazia. Encontre água e encha-a.'}else{$('hint').textContent='Sem água! Encontre uma fonte ou garrafa.'}updateHud()}
+function drinkAnimation(){$('drinkFx').style.display='block';setTimeout(()=>{$('drinkFx').style.display='none'},700)}
+function purify(){if(dirtyWater>0&&woodCount>=1){dirtyWater--;woodCount--;boiledWater++;updateHud();$('hint').textContent='Água fervida e segura!'}else if(dirtyWater<=0){$('hint').textContent='Você não tem água suja para ferver.'}else{$('hint').textContent='Precisa de 1 madeira para ferver a água.'}}
+function buildCollector(){if(rainCollector){$('hint').textContent='Você já construiu um coletor de chuva.';return}if(woodCount>=5&&stoneCount>=2){woodCount-=5;stoneCount-=2;rainCollector=true;rainProgress=0;updateHud();$('hint').textContent='Coletor de chuva construído! Ele acumula água quando chove.'}else $('hint').textContent='Coletor: precisa de 5 madeiras e 2 pedras.'}
+function eat(){if(fruitCount>0&&(hunger<100||thirst<100)){fruitCount--;hunger=Math.min(100,hunger+22);thirst=Math.min(100,thirst+8);updateHud();$('hint').textContent='Você comeu uma fruta.'}else $('hint').textContent=fruitCount?'Você não precisa comer agora.':'Você não tem frutas.'}
+function craft(){if(woodCount>=4&&stoneCount>=2){woodCount-=4;stoneCount-=2;let fire=new THREE.Group(),base=new THREE.Mesh(new THREE.CylinderGeometry(.55,.65,.18,8),wood);base.position.y=.12;fire.add(base);for(let i=0;i<3;i++){let log=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,1.1,6),wood);log.rotation.z=Math.PI/2;log.rotation.y=i*1.05;log.position.y=.28;fire.add(log)}let flame=new THREE.Mesh(new THREE.ConeGeometry(.32,.9,8),new THREE.MeshBasicMaterial({color:0xff9b35}));flame.position.y=.8;fire.add(flame);fire.position.set(player.x,groundY(player.x,player.z),player.z);scene.add(fire);let light=new THREE.PointLight(0xff8b36,1.7,9);light.position.set(player.x,groundY(player.x,player.z)+1,player.z);scene.add(light);updateHud();$('hint').textContent='Fogueira criada! Boa, sobrevivente.'}else $('hint').textContent='Precisa de 4 madeiras e 2 pedras para criar uma fogueira.'}
+function jump(){if(player.onGround){player.vy=7;player.onGround=false}}
+addEventListener('keydown',e=>{keys[e.code]=true;if(e.code==='KeyN')showBuild();if(e.code==='KeyE'){if(animalNear())hunt();else if(landmarks.some(l=>!l.looted&&Math.hypot(player.x-l.obj.position.x,player.z-l.obj.position.z)<5))explore();else collect();}if(e.code==='KeyG')drink();if(e.code==='KeyV')purify();if(e.code==='KeyB')buildCollector();if(e.code==='KeyN')toggleBuild();if(e.code==='KeyR'&&buildMode)rotateBuild();if(e.code==='Enter'&&buildMode)placeBuild();if(e.code==='Escape'&&buildMode)closeBuild();if(e.code==='KeyF')eat();if(e.code==='KeyC')craft();if(e.code==='Space')jump()});addEventListener('keyup',e=>keys[e.code]=false);
+renderer.domElement.addEventListener('click',()=>{if(started&&!('ontouchstart'in window))renderer.domElement.requestPointerLock?.()});
+document.addEventListener('mousemove',e=>{if(document.pointerLockElement===renderer.domElement){player.yaw-=e.movementX*.0022;player.pitch=Math.max(-1.45,Math.min(1.45,player.pitch-e.movementY*.0022))}});
+let joy={x:0,y:0},drag=null,joyPointer=null;const pad=$('pad'),stick=$('stick');
+pad.addEventListener('pointerdown',e=>{e.preventDefault();joyPointer=e.pointerId;try{pad.setPointerCapture(e.pointerId)}catch(_){}moveStick(e)});
+pad.addEventListener('pointermove',e=>{if(e.pointerId===joyPointer){e.preventDefault();moveStick(e)}});
+function stopJoy(e){if(!e||e.pointerId===joyPointer){joyPointer=null;joy.x=joy.y=0;stick.style.transform='translate(0,0)'}}
+pad.addEventListener('pointerup',stopJoy);pad.addEventListener('pointercancel',stopJoy);pad.addEventListener('lostpointercapture',stopJoy);
+function moveStick(e){let r=pad.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),len=Math.hypot(dx,dy),s=Math.min(42,len),a=Math.atan2(dy,dx);joy.x=Math.cos(a)*s/42;joy.y=Math.sin(a)*s/42;stick.style.transform=`translate(${joy.x*42}px,${joy.y*42}px)`}
+renderer.domElement.addEventListener('pointerdown',e=>{if(e.pointerType==='touch'&&e.clientX>innerWidth*.38)drag={x:e.clientX,y:e.clientY,id:e.pointerId}});
+renderer.domElement.addEventListener('pointermove',e=>{if(drag&&drag.id===e.pointerId){player.yaw-=(e.clientX-drag.x)*.006;player.pitch=Math.max(-1.4,Math.min(1.4,player.pitch-(e.clientY-drag.y)*.006));drag.x=e.clientX;drag.y=e.clientY}});
+renderer.domElement.addEventListener('pointerup',()=>drag=null);$('collect').onclick=collect;$('drink').onclick=drink;$('eat').onclick=eat;$('jump').onclick=jump;$('craft').onclick=craft;$('purify').onclick=purify;$('collector').onclick=buildCollector;
+$('play').onclick=()=>{$('start').style.display='none';started=true;if(!('ontouchstart'in window))renderer.domElement.requestPointerLock?.()};
+// Pequeno lago de água doce e garrafas espalhadas pela ilha.
+const lakeGeo=new THREE.CircleGeometry(5.2,48);const lake=new THREE.Mesh(lakeGeo,new THREE.MeshStandardMaterial({color:0x168fc0,transparent:true,opacity:.82,roughness:.22}));lake.rotation.x=-Math.PI/2;lake.position.set(-12,groundY(-12,8)+.09,8);lake.scale.set(1.15,.72,1);scene.add(lake);waterSources.push({x:-12,z:8,label:'lago'});
+function addBottle(x,z){let g=new THREE.Group();let body=new THREE.Mesh(new THREE.CylinderGeometry(.16,.18,.62,10),new THREE.MeshStandardMaterial({color:0x7bdcff,transparent:true,opacity:.72,roughness:.2}));body.position.y=.38;g.add(body);let cap=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,.1,8),mat(0x244b66));cap.position.y=.74;g.add(cap);g.position.set(x,groundY(x,z),z);scene.add(g);waterPickups.push({obj:g,active:true})}
+for(let i=0;i<9;i++){let a=rand()*Math.PI*2,r=8+rand()*21,x=Math.cos(a)*r,z=Math.sin(a)*r;if(groundY(x,z)>.1)addBottle(x,z)}
+
+// === EXPANSÃO DE SOBREVIVÊNCIA: construção, fauna, clima, exploração e progressão ===
+let fiberCount=0,meatCount=0,hideCount=0,fishCount=0,toolLevel=0,hasRaft=false,hasFilter=false;
+let temperature=24,weatherState="Limpo",weatherClock=0,stormClock=0,nightClock=0,questStep=0;
+
+function saveSurvivalState(){
+ try{
+  const state={version:1,player:{x:player.x,z:player.z,yaw:player.yaw,pitch:player.pitch},stats:{health,hunger,thirst,woodCount,stoneCount,fruitCount,fiberCount,meatCount,hideCount,fishCount,day,waterBottles,dirtyWater,cleanWater,boiledWater,rainCollector,rainProgress,toolLevel,hasRaft,hasFilter,temperature,weatherState,questStep},resources:resources.map(r=>!!r.active),waterPickups:waterPickups.map(p=>!!p.active)};
+  localStorage.setItem("survivalIslandSaveV1",JSON.stringify(state));
+ }catch(e){}
+}
+function loadSurvivalState(){
+ try{
+  const raw=localStorage.getItem("survivalIslandSaveV1");if(!raw)return;
+  const state=JSON.parse(raw);if(!state||state.version!==1)return;
+  const p=state.player||{},s=state.stats||{};
+  const number=(v,f,min,max)=>Number.isFinite(v)?Math.max(min,Math.min(max,v)):f;
+  player.x=number(p.x,0,-30,30);player.z=number(p.z,0,-30,30);
+  if(Math.hypot(player.x,player.z)>31){player.x=0;player.z=0}
+  player.y=groundY(player.x,player.z)+1.65;player.yaw=number(p.yaw,0,-1000,1000);player.pitch=number(p.pitch,0,-1.4,1.4);
+  health=number(s.health,100,0,100);hunger=number(s.hunger,100,0,100);thirst=number(s.thirst,100,0,100);
+  woodCount=number(s.woodCount,0,0,99999);stoneCount=number(s.stoneCount,0,0,99999);fruitCount=number(s.fruitCount,0,0,99999);
+  fiberCount=number(s.fiberCount,0,0,99999);meatCount=number(s.meatCount,0,0,99999);hideCount=number(s.hideCount,0,0,99999);fishCount=number(s.fishCount,0,0,99999);
+  day=number(s.day,0,0,100000);waterBottles=number(s.waterBottles,0,0,99999);dirtyWater=number(s.dirtyWater,0,0,99999);cleanWater=number(s.cleanWater,0,0,99999);boiledWater=number(s.boiledWater,0,0,99999);
+  rainCollector=s.rainCollector===true;rainProgress=number(s.rainProgress,0,0,10000);toolLevel=number(s.toolLevel,0,0,2);hasRaft=s.hasRaft===true;hasFilter=s.hasFilter===true;
+  temperature=number(s.temperature,24,-30,60);if(["Limpo","Chuva","Tempestade"].includes(s.weatherState))weatherState=s.weatherState;
+  questStep=number(s.questStep,0,0,5);
+  if(Array.isArray(state.resources))resources.forEach((r,i)=>{if(state.resources[i]===false){r.active=false;scene.remove(r.obj)}});
+  if(Array.isArray(state.waterPickups))waterPickups.forEach((p,i)=>{if(state.waterPickups[i]===false){p.active=false;scene.remove(p.obj)}});
+  updateHud();
+ }catch(e){}
+}
+loadSurvivalState();
+window.addEventListener("pagehide",saveSurvivalState);
+
+const builtObjects=[],animals=[],landmarks=[],rainDrops=[];
+const buildMenu=$("buildMenu");
+function showBuild(){buildMenu.style.display=buildMenu.style.display==="block"?"none":"block"}
+$("build").onclick=showBuild;$("closeBuild").onclick=()=>buildMenu.style.display="none";
+function pay(w,s,f=0){if(woodCount<w||stoneCount<s||fiberCount<f)return false;woodCount-=w;stoneCount-=s;fiberCount-=f;updateHud();return true}
+function makeExpandedStructure(type){
+ const costs={foundation:[6,0,0],wall:[4,0,0],door:[5,0,0],roof:[5,0,0],chest:[6,2,0],bed:[5,0,3],workbench:[8,3,0],torch:[2,1,0],raft:[12,0,4],spear:[3,2,0],axe:[4,3,0],filter:[5,4,0]};
+ const c=costs[type];if(!c)return;
+ if(!pay(c[0],c[1],c[2])){$("hint").textContent="Materiais insuficientes para essa construção.";return}
+ if(type==="spear"||type==="axe"){toolLevel=Math.max(toolLevel,type==="axe"?2:1);$("hint").textContent=type==="axe"?"Machado fabricado! Coleta de madeira melhorada.":"Lança fabricada! Você pode se defender.";buildMenu.style.display="none";return}
+ if(type==="filter"){hasFilter=true;$("hint").textContent="Filtro de água instalado. A água coletada agora pode ser filtrada.";buildMenu.style.display="none";return}
+ const g=new THREE.Group(),woodMat=mat(0x81532e),stoneMat=mat(0x777e7c);
+ const plank=(x,y,z,sx,sy,sz,m=woodMat)=>{let o=new THREE.Mesh(new THREE.BoxGeometry(sx,sy,sz),m);o.position.set(x,y,z);o.castShadow=true;o.receiveShadow=true;g.add(o)};
+ if(type==="foundation"){plank(0,.12,0,3.8,.24,3.8);for(let x of [-1.65,1.65])for(let z of [-1.65,1.65])plank(x,.28,z,.25,.18,.25)}
+ if(type==="wall"){plank(0,1.2,0,3.6,2.4,.18);for(let x of [-1.7,0,1.7])plank(x,1.2,.12,.12,2.5,.12)}
+ if(type==="door"){plank(-.9,1.2,0,1.7,2.4,.18);plank(.95,1.2,0,1.7,2.4,.18);plank(0,2.35,0,.2,.18,.18)}
+ if(type==="roof"){plank(0,0,0,4,.18,2);let r=new THREE.Mesh(new THREE.ConeGeometry(2.8,.9,4),woodMat);r.rotation.y=Math.PI/4;r.position.y=.5;g.add(r)}
+ if(type==="chest"){plank(0,.45,0,1.3,.9,.9);plank(0,.95,0,1.35,.18,.95);let latch=new THREE.Mesh(new THREE.BoxGeometry(.12,.25,.08),stoneMat);latch.position.set(0,.75,.5);g.add(latch)}
+ if(type==="bed"){plank(0,.35,0,1.1,.25,2.2);plank(0,.55,0,1, .18,1.8,mat(0xb5a17a))}
+ if(type==="workbench"){plank(0,1,0,2,.2,1);for(let x of [-.8,.8])for(let z of [-.35,.35])plank(x,.48,z,.15,1,.15)}
+ if(type==="torch"){plank(0,.65,0,.14,1.3,.14);let flame=new THREE.Mesh(new THREE.ConeGeometry(.2,.55,7),new THREE.MeshBasicMaterial({color:0xffa13b}));flame.position.y=1.55;g.add(flame);let l=new THREE.PointLight(0xff9a43,1.1,10);l.position.y=1.6;g.add(l)}
+ if(type==="raft"){plank(0,.12,0,3.4,.2,2.2);for(let x of [-1.3,-.65,0,.65,1.3])plank(x,.24,0,.48,.12,2.4);hasRaft=true}
+ g.position.set(player.x-Math.sin(player.yaw)*3,groundY(player.x-Math.sin(player.yaw)*3,player.z-Math.cos(player.yaw)*3),player.z-Math.cos(player.yaw)*3);
+ g.rotation.y=player.yaw;scene.add(g);builtObjects.push({type,obj:g});
+ $("hint").textContent="Construção concluída: "+type+".";
+ buildMenu.style.display="none";updateHud();
+}
+buildMenu.querySelectorAll("[data-build]").forEach(b=>b.addEventListener("click",()=>makeExpandedStructure(b.dataset.build)));
+function addAnimal(x,z,kind){
+ const g=new THREE.Group(),fur=mat(kind==="javali"?0x49352b:0x9a7650),dark=mat(0x292522);
+ const body=new THREE.Mesh(new THREE.SphereGeometry(.65,12,10),fur);body.scale.set(1.35,.8,.8);body.position.y=.85;body.castShadow=true;g.add(body);
+ const head=new THREE.Mesh(new THREE.SphereGeometry(.38,10,8),fur);head.position.set(0,1.05,.82);g.add(head);
+ for(let i of [-1,1]){let leg=new THREE.Mesh(new THREE.CylinderGeometry(.09,.11,.55,7),dark);leg.position.set(i*.35,.35,.25);g.add(leg)}
+ g.position.set(x,groundY(x,z),z);scene.add(g);animals.push({obj:g,kind,hp:kind==="javali"?3:2,dir:rand()*6.28,clock:0,alive:true});
+}
+for(let i=0;i<8;i++){let a=rand()*Math.PI*2,r=9+rand()*21,x=Math.cos(a)*r,z=Math.sin(a)*r;if(groundY(x,z)>.1)addAnimal(x,z,i%3===0?"javali":"veado")}
+function animalNear(){let b=null,d=3.2;for(const a of animals)if(a.alive){let n=Math.hypot(player.x-a.obj.position.x,player.z-a.obj.position.z);if(n<d){d=n;b=a}}return b}
+function hunt(){let a=animalNear();if(!a){$("hint").textContent="Aproxime-se de um animal para caçar com E ou PESCAR perto da água.";return}
+ if(toolLevel<1){$("hint").textContent="Você precisa fabricar uma lança para caçar.";return}
+ a.hp--;if(a.hp<=0){a.alive=false;scene.remove(a.obj);meatCount+=a.kind==="javali"?3:2;hideCount++;fiberCount++;$("hint").textContent="Caça concluída: carne, couro e fibra coletados."}else $("hint").textContent="Você atingiu o animal! Ele está ferido.";updateHud()}
+function fishing(){let near=nearestWater(),coast=Math.hypot(player.x,player.z)>27;if(!near&&!coast){$("hint").textContent="Vá até o lago ou à beira-mar para pescar.";return}if(toolLevel<1){$("hint").textContent="Fabrique uma lança para pescar.";return}if(rand()<.78){fishCount++;$("hint").textContent="Você pescou um peixe!";}else $("hint").textContent="Os peixes escaparam. Tente novamente.";updateHud()}
+$("fish").onclick=fishing;
+function eatFood(){if(meatCount>0){meatCount--;hunger=Math.min(100,hunger+38);$("hint").textContent="Carne consumida. Fome recuperada."}else if(fishCount>0){fishCount--;hunger=Math.min(100,hunger+30);$("hint").textContent="Peixe consumido. Fome recuperada."}else eat();updateHud()}
+$("eat").onclick=eatFood;addEventListener("keydown",e=>{if(e.code==="KeyT")fishing();if(e.code==="KeyH")hunt()});
+function addLandmark(x,z,type){
+ const g=new THREE.Group();
+ if(type==="caverna"){let arch=new THREE.Mesh(new THREE.TorusGeometry(2,0.65,8,16,Math.PI),mat(0x3d4644));arch.rotation.z=Math.PI;arch.position.y=1.5;g.add(arch);let darkHole=new THREE.Mesh(new THREE.CircleGeometry(1.45,16),mat(0x10191c));darkHole.position.set(0,1.1,-.05);g.add(darkHole)}
+ else {let hull=new THREE.Mesh(new THREE.BoxGeometry(5,1.3,2),mat(0x60452f));hull.rotation.z=.2;hull.position.y=.8;g.add(hull);let mast=new THREE.Mesh(new THREE.CylinderGeometry(.08,.12,4,7),wood);mast.position.y=3;g.add(mast)}
+ g.position.set(x,groundY(x,z),z);scene.add(g);landmarks.push({obj:g,type,looted:false});
+}
+addLandmark(18,7,"naufragio");addLandmark(-22,-9,"caverna");
+function explore(){let l=landmarks.find(v=>!v.looted&&Math.hypot(player.x-v.obj.position.x,player.z-v.obj.position.z)<5);if(!l){$("hint").textContent="Explore os pontos afastados da ilha para encontrar uma caverna e um naufrágio.";return}
+ l.looted=true;woodCount+=5;stoneCount+=3;fiberCount+=2;let bonus= l.type==="caverna"?"Você encontrou minerais raros na caverna!":"Você saqueou o naufrágio e encontrou suprimentos!";$("hint").textContent=bonus;updateHud()}
+addEventListener("keydown",e=>{if(e.code==="KeyQ")explore()});
+function updateWeather(dt){
+ weatherClock+=dt;if(weatherClock>95){weatherClock=0;weatherState=weatherState==="Limpo"?"Chuva":weatherState==="Chuva"?"Tempestade":"Limpo";$("weather").textContent=weatherState}
+ let raining=weatherState!=="Limpo";if(raining){stormClock+=dt;if(rainCollector&&stormClock>12){stormClock=0;cleanWater++;updateHud();$("hint").textContent="O coletor armazenou água da chuva."}}
+ let t=performance.now()*.00012;temperature= Math.round(24+Math.sin(day*1.7)*5-(weatherState==="Tempestade"?7:raining?3:0));
+ $("temperature").textContent=temperature;
+ if(temperature<12){health=Math.max(0,health-dt*.18);if(!builtObjects.some(o=>o.type==="torch")&&Math.random()<.001)$("hint").textContent="Está frio! Construa uma fogueira ou tocha para se aquecer."}
+ if(temperature>34)thirst=Math.max(0,thirst-dt*.025);
+}
+function questUpdate(){
+ const goals=["Colete 6 madeiras e 3 pedras.","Construa uma bancada de trabalho.","Fabrique uma lança e consiga comida.","Encontre o naufrágio ou a caverna.","Construa uma jangada para escapar."];
+ if(questStep===0&&woodCount>=6&&stoneCount>=3)questStep=1;
+ if(questStep===1&&builtObjects.some(o=>o.type==="workbench"))questStep=2;
+ if(questStep===2&&toolLevel>=1&&(meatCount+fishCount)>0)questStep=3;
+ if(questStep===3&&landmarks.some(l=>l.looted))questStep=4;
+ if(questStep===4&&hasRaft)questStep=5;
+ $("hint").dataset.quest=questStep<5?"Missão: "+goals[questStep]:"Missão concluída! Você construiu uma jangada e pode tentar escapar.";
+}
+function expandedHud(){let old=$("worldInfo");old.innerHTML="🌡️ <span id='temperature'>"+temperature+"</span>°C · <span id='weather'>"+weatherState+"</span><br>🌿 "+fiberCount+" fibras · 🍖 "+meatCount+" carnes · 🐟 "+fishCount+" peixes · 🐾 "+hideCount+" couro";}
+
+const clock=new THREE.Clock();let survivalTimer=0;
+let survivalSaveClock=0;
+function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04);survivalSaveClock+=dt;if(survivalSaveClock>=8){survivalSaveClock=0;if(started)saveSurvivalState();}oceanUniforms.uOceanTime.value+=dt;ocean.position.y=-1.25+Math.sin(oceanUniforms.uOceanTime.value)*.035;for(const c of clouds){c.obj.position.x+=c.speed*dt;if(c.obj.position.x>95)c.obj.position.x=-95;}if(started){let forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joy.y,right=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joy.x;let len=Math.hypot(forward,right);if(len>1){forward/=len;right/=len}let speed=keys.ShiftLeft?8:5;player.x+=(-Math.sin(player.yaw)*forward+Math.cos(player.yaw)*right)*speed*dt;player.z+=(-Math.cos(player.yaw)*forward-Math.sin(player.yaw)*right)*speed*dt;let r=Math.hypot(player.x,player.z);if(r>31){player.x*=31/r;player.z*=31/r}
+player.vy-=18*dt;player.y+=player.vy*dt;let floor=groundY(player.x,player.z)+1.65;if(player.y<=floor){player.y=floor;player.vy=0;player.onGround=true}
+camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0);if(buildMode&&preview){const bp=buildPosition();preview.position.set(bp.x,groundY(bp.x,bp.z),bp.z);preview.rotation.y=bp.rotation;const invalid=cellOccupied(bp.x,bp.z,pieceInfo[selectedPiece].layer)||woodCount<pieceInfo[selectedPiece].wood||stoneCount<pieceInfo[selectedPiece].stone;preview.traverse(o=>{if(o.isMesh)o.material.color.setHex(invalid?0xff5555:0x62d6a5)})}
+survivalTimer+=dt;updateWeather(dt);questUpdate();let moving=len>0.15,sprinting=!!keys.ShiftLeft&&moving;thirst=Math.max(0,thirst-dt*(sprinting?0.095:moving?0.045:0.025));if(rainCollector){rainProgress+=dt;if(rainProgress>150){rainProgress=0;cleanWater++;updateHud();$('hint').textContent='Seu coletor acumulou água da chuva!'}}if(thirst<=50&&thirst>25){warningText='Você está com sede. Procure água!';warningUntil=performance.now()+2500}else if(thirst<=25&&thirst>10){warningText='Desidratação: sua visão está ficando turva!';warningUntil=performance.now()+2500;camera.fov=75+Math.sin(performance.now()*.004)*3;camera.updateProjectionMatrix()}else if(thirst<=10){warningText='PERIGO: desidratação grave!';warningUntil=performance.now()+2500;health=Math.max(0,health-dt*1.2)}else{camera.fov=75;camera.updateProjectionMatrix()}if(thirst<=0){health=Math.max(0,health-dt*3)}if(hunger<=0){health=Math.max(0,health-dt*1.2)}else hunger=Math.max(0,hunger-dt*.006);if(health===0){$('hint').textContent='Você não sobreviveu... atualize a página para tentar novamente.';started=false}updateHud()}
+
+for(const a of animals){if(!a.alive)continue;a.clock+=dt;if(a.clock>2){a.clock=0;a.dir+=(rand()-.5)*1.8}let dx=Math.sin(a.dir)*dt*.8,dz=Math.cos(a.dir)*dt*.8;a.obj.position.x+=dx;a.obj.position.z+=dz;a.obj.position.y=groundY(a.obj.position.x,a.obj.position.z);if(Math.hypot(player.x-a.obj.position.x,player.z-a.obj.position.z)<1.7&&a.kind==="javali")health=Math.max(0,health-dt*1.4)}
+let near=nearest(),wnear=nearestWater(),pnear=nearestPickup();if(buildMode)$('hint').textContent='Prévia da construção • gire e confirme para colocar';if(performance.now()<warningUntil){$('warning').style.display='block';$('warning').textContent=warningText}else $('warning').style.display='none';if(!buildMode&&wnear)$('hint').textContent='Água do '+wnear.label+' • E para coletar (não potável)';else if(!buildMode&&pnear)$('hint').textContent='Garrafa de água • E para pegar';else if(!buildMode)$('hint').textContent=near?'Pressione E / COLETAR para pegar '+near.label:'Explore a ilha • 💧 G beber • V ferver água • Colete recursos';day+=dt*.025;let k=(Math.sin(day)+1)/2;sun.intensity=.35+k*1.9;scene.background.setHSL(.53,.42,.22+k*.28);scene.fog.color.copy(scene.background);
+}
+sky.position.copy(camera.position);renderer.render(scene,camera)}
+window.__survivalReady=true;if(window.__survivalStarted){started=true;$('start').style.display='none';}animate();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body></html>
