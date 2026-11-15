@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#071b25">
 <title>Survival Island 3D</title>
 <style>
-:root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,sans-serif}*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#071b25;color:#fff}canvas{display:block}
+:root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,sans-serif}*{box-sizing:border-box}body{margin:0;overflow:hidden;background:#071b25;color:#fff}canvas{display:block;position:fixed;inset:0;width:100%;height:100%;touch-action:none}
 #hud{position:fixed;inset:12px 12px auto;display:flex;gap:8px;flex-wrap:wrap;pointer-events:none;z-index:3}.stat,.inventory{background:#07151dcc;border:1px solid #ffffff26;border-radius:12px;padding:8px 11px;backdrop-filter:blur(8px);font-size:13px}.stat b{display:block;font-size:15px}.thirstStat{min-width:150px}.waterTrack{height:7px;background:#163b4c;border-radius:9px;overflow:hidden;margin-top:5px}.waterFill{height:100%;width:100%;background:linear-gradient(90deg,#168fe5,#65d9ff);transition:width .25s}.thirstStat.low .waterFill{background:linear-gradient(90deg,#e58a22,#ff4545)}.inventory{margin-left:auto;display:flex;gap:12px;align-items:center}
 #cross{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:22px;color:#fff9;pointer-events:none;z-index:2}
 #hint{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:#07151ddd;border:1px solid #ffffff30;padding:10px 16px;border-radius:12px;font-size:13px;text-align:center;max-width:90vw;z-index:4}
@@ -131,7 +131,7 @@ let seed=42;function rand(){seed=(seed*1664525+1013904223)>>>0;return seed/42949
 for(let i=0;i<52;i++){let a=rand()*Math.PI*2,r=7+rand()*23,x=Math.cos(a)*r,z=Math.sin(a)*r;if(groundY(x,z)>.1)addTree(x,z)}
 for(let i=0;i<27;i++){let a=rand()*Math.PI*2,r=5+rand()*27,x=Math.cos(a)*r,z=Math.sin(a)*r;addRock(x,z)}
 for(let i=0;i<17;i++){let a=rand()*Math.PI*2,r=6+rand()*24,x=Math.cos(a)*r,z=Math.sin(a)*r;addFruit(x,z)}
-const player={x:0,z:0,y:groundY(0,0)+1.65,vy:0,yaw:0,pitch:-.10,onGround:true};camera.position.set(player.x,player.y,player.z);
+const player={x:0,z:0,y:groundY(0,0)+1.65,vy:0,yaw:0,pitch:-.32,onGround:true};camera.position.set(player.x,player.y,player.z);
 
 const buildPanel=$('buildPanel'),buildPieces=[...document.querySelectorAll('[data-piece]')];
 const pieceInfo={
