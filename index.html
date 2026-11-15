@@ -77,156 +77,7 @@ document.getElementById('play').addEventListener('click', () => {
 });
 </script>
 <script type="module">
-// Babylon.js passa a ser o motor 3D. Esta camada mantém a API interna usada
-// pelo jogo para migrar o renderizador sem reescrever os sistemas de sobrevivência.
-async function loadBabylon(){
- const sources=['https://cdn.babylonjs.com/babylon.js','https://cdn.jsdelivr.net/npm/babylonjs@7.54.3/babylon.js'];
- let lastError;
- for(const src of sources){
-  try{
-   await new Promise((resolve,reject)=>{
-    if(window.BABYLON){resolve();return}
-    const script=document.createElement('script');script.src=src;script.async=true;
-    script.onload=()=>window.BABYLON?resolve():reject(new Error('Biblioteca carregada sem expor BABYLON'));
-    script.onerror=()=>reject(new Error('Falha ao carregar '+src));
-    document.head.appendChild(script);
-   });
-   if(window.BABYLON)return window.BABYLON;
-  }catch(e){lastError=e}
- }
- throw new Error('Não foi possível carregar o Babylon.js pelos servidores disponíveis. '+String(lastError?.message||lastError));
-}
-const B=await loadBabylon();
-const canvas=document.createElement('canvas');canvas.id='survival3d';
-canvas.style.cssText='position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;z-index:0';
-document.body.insertBefore(canvas,document.body.firstChild);
-let engine;
-try{engine=new B.Engine(canvas,true,{preserveDrawingBuffer:false,stencil:true,disableWebGL2Support:false,powerPreference:'high-performance'});}
-catch(firstEngineError){
- try{engine=new B.Engine(canvas,false,{preserveDrawingBuffer:false,stencil:false,disableWebGL2Support:true,powerPreference:'low-power'});}
- catch(secondEngineError){throw new Error('O Babylon.js não conseguiu iniciar WebGL neste navegador. Atualize o navegador e feche outras abas 3D. '+String(secondEngineError?.message||secondEngineError))}
-}
-const sceneNative=new B.Scene(engine);
-canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();showBootError('O contexto gráfico foi reiniciado pelo navegador. Atualize a página para continuar.');});
-sceneNative.clearColor=new B.Color4(.53,.78,.84,1);
-sceneNative.skipPointerMovePicking=true;
-class CompatColor{
- constructor(hex=0xffffff,onChange=null){this._c=B.Color3.FromHexString('#'+Number(hex).toString(16).padStart(6,'0'));this._onChange=onChange}
- get r(){return this._c.r} get g(){return this._c.g} get b(){return this._c.b}
- sync(){this._onChange?.(this._c);return this}
- setHex(hex){this._c=B.Color3.FromHexString('#'+Number(hex).toString(16).padStart(6,'0'));return this.sync()}
- setHSL(h,s,l){const c=B.Color3.FromHSV(h*360,s,l);this._c=c;sceneNative.clearColor=new B.Color4(c.r,c.g,c.b,1);return this}
- copy(other){this._c=new B.Color3(other.r,other.g,other.b);return this.sync()}
- lerp(other,t){this._c=B.Color3.Lerp(this._c,new B.Color3(other.r,other.g,other.b),t);return this}
-}
-const colorFrom=(v)=>typeof v==='number'?B.Color3.FromHexString('#'+v.toString(16).padStart(6,'0')):new B.Color3(v?.r??1,v?.g??1,v?.b??1);
-class CompatMaterial{
- constructor(opts={},basic=false){
-  this.native=new B.StandardMaterial('mat_'+Math.random().toString(36).slice(2),sceneNative);
-  this.native.diffuseColor=colorFrom(opts.color??0xffffff);
-  this.native.specularColor=new B.Color3(.12,.12,.12);
-  this.native.specularPower=opts.roughness===undefined?64:Math.max(2,(1-opts.roughness)*120);
-  this.native.disableLighting=basic;
-  this.native.emissiveColor=basic?colorFrom(opts.color??0xffffff):new B.Color3(0,0,0);
-  this.native.alpha=opts.opacity??1;
-  this.native.backFaceCulling=(opts.side===2||opts.side===1)?false:true;
-  this.native.useVertexColors=!!opts.vertexColors;
-  this.native.wireframe=!!opts.wireframe;
-  this._basic=basic;this._color=new CompatColor(opts.color??0xffffff,c=>{this.native.diffuseColor=c;if(this._basic)this.native.emissiveColor=c});
-  Object.defineProperty(this,'color',{get:()=>this._color,set:v=>{this._color.copy(v)}});
-  Object.defineProperty(this,'transparent',{get:()=>this.native.alpha<1,set:v=>{if(!v&&this.native.alpha<1)this.native.alpha=1}});
-  Object.defineProperty(this,'opacity',{get:()=>this.native.alpha,set:v=>{this.native.alpha=v}});
-  this.depthWrite=opts.depthWrite??true;this.flatShading=!!opts.flatShading;
- }
- clone(){return new CompatMaterial({color:this._color,roughness:1-this.native.specularPower/120,opacity:this.native.alpha,side:this.native.backFaceCulling?0:2,vertexColors:this.native.useVertexColors},this._basic)}
-}
-class Geometry{constructor(kind,opts={}){this.kind=kind;this.opts=opts;this.attrs={};this.indices=null}}
-class BufferGeometry extends Geometry{
- constructor(){super('buffer')}
- setAttribute(k,v){this.attrs[k]=v;return this}
- setIndex(v){this.indices=v;return this}
- computeVertexNormals(){this.computeNormals=true}
-}
-class Float32BufferAttribute{constructor(array,itemSize){this.array=array;this.itemSize=itemSize}}
-function decorateNode(n,isMesh=false){
- n.scale=n.scaling;
- if(!n.scale.setScalar)n.scale.setScalar=v=>n.scaling.set(v,v,v);
- n.isMesh=isMesh;
- n.castShadow=false;n.receiveShadow=false;
- n.userData=n.userData||{};
- n.add=function(child){child.parent=n;return this};
- n.traverse=function(fn){fn(this);(this.getChildMeshes?.(false)||[]).forEach(fn);(this.getChildren?.(false)||[]).filter(c=>!c.getChildMeshes).forEach(c=>c.traverse?c.traverse(fn):fn(c))};
- return n;
-}
-function buildGeometry(g){
- const o=g.opts||{},k=g.kind;
- if(k==='plane')return B.MeshBuilder.CreatePlane('plane',{width:o.width,height:o.height,sideOrientation:B.Mesh.DOUBLESIDE},sceneNative);
- if(k==='sphere')return B.MeshBuilder.CreateSphere('sphere',{diameter:2*(o.radius??1),segments:Math.max(4,o.widthSegments??16)},sceneNative);
- if(k==='icosa')return B.MeshBuilder.CreatePolyhedron('ico',{type:3,size:o.radius??1},sceneNative);
- if(k==='dodeca')return B.MeshBuilder.CreatePolyhedron('dodeca',{type:2,size:o.radius??1},sceneNative);
- if(k==='cylinder')return B.MeshBuilder.CreateCylinder('cylinder',{height:o.height,diameterTop:2*(o.radiusTop??o.radiusBottom??1),diameterBottom:2*(o.radiusBottom??o.radiusTop??1),tessellation:o.radialSegments??12},sceneNative);
- if(k==='box')return B.MeshBuilder.CreateBox('box',{width:o.width,height:o.height,depth:o.depth},sceneNative);
- if(k==='cone')return B.MeshBuilder.CreateCylinder('cone',{height:o.height,diameterTop:0,diameterBottom:2*o.radius,tessellation:o.radialSegments??8},sceneNative);
- if(k==='torus')return B.MeshBuilder.CreateTorus('torus',{diameter:2*(o.radius??1),thickness:o.tube??.2,tessellation:o.radialSegments??16},sceneNative);
- if(k==='circle')return B.MeshBuilder.CreateDisc('circle',{radius:o.radius,tessellation:o.segments??32,sideOrientation:B.Mesh.DOUBLESIDE},sceneNative);
- if(k==='ring'){
-  const positions=[],indices=[],seg=o.segments??48,inner=o.inner??.5,outer=o.outer??1;
-  for(let i=0;i<=seg;i++){const a=i/seg*Math.PI*2,c=Math.cos(a),s=Math.sin(a);positions.push(inner*c,inner*s,0,outer*c,outer*s,0);if(i<seg){const q=i*2;indices.push(q,q+1,q+2,q+1,q+3,q+2)}}
-  const m=new B.Mesh('ring',sceneNative),vd=new B.VertexData();vd.positions=positions;vd.indices=indices;B.VertexData.ComputeNormals(positions,indices,vd.normals=[]);vd.applyToMesh(m);return m;
- }
- if(k==='buffer'){
-  const m=new B.Mesh('terrain',sceneNative),p=g.attrs.position?.array||[],idx=g.indices||[];
-  m.setVerticesData(B.VertexBuffer.PositionKind,p, true,3);m.setIndices(idx);
-  if(g.attrs.color){const rgb=g.attrs.color.array,rgba=[];for(let i=0;i<rgb.length;i+=3)rgba.push(rgb[i],rgb[i+1],rgb[i+2],1);m.setVerticesData(B.VertexBuffer.ColorKind,rgba,true,4)}
-  const normals=[];B.VertexData.ComputeNormals(p,idx,normals);m.setVerticesData(B.VertexBuffer.NormalKind,normals);
-  return m;
- }
- return B.MeshBuilder.CreateBox('fallback',{size:1},sceneNative);
-}
-class CompatMesh{
- constructor(geometry,material){const native=buildGeometry(geometry);native.material=material?.native||null;decorateNode(native,true);return native}
-}
-class CompatGroup{
- constructor(){return decorateNode(new B.TransformNode('group',sceneNative),false)}
-}
-class CompatScene{
- constructor(){this.native=sceneNative;this.background=new CompatColor(0x87c8d6,c=>{sceneNative.clearColor=new B.Color4(c.r,c.g,c.b,1)});this.fog={color:new CompatColor(0x87c8d6,c=>{sceneNative.fogColor=c}),near:38,far:115};sceneNative.fogMode=B.Scene.FOGMODE_EXP2;sceneNative.fogDensity=.008;sceneNative.fogColor=new B.Color3(.53,.78,.84)}
- add(){/* Babylon registra os nós na cena ao criá-los. */}
- remove(o){o?.dispose?.(false,false)}
-}
-class CompatCamera{
- constructor(fov,aspect,near,far){const c=new B.FreeCamera('playerCamera',new B.Vector3(0,2,0),sceneNative);c.fov=fov*Math.PI/180;c.minZ=near;c.maxZ=far;c.rotation=new B.Vector3(0,0,0);c.aspect=aspect;c.updateProjectionMatrix=()=>{};c.rotation.order='YXZ';sceneNative.activeCamera=c;return c}
-}
-class CompatRenderer{
- constructor(){this.domElement=canvas;this.shadowMap={enabled:true,type:0,mapSize:{width:1024,height:1024}};this.outputColorSpace=0;this.toneMapping=0;this.toneMappingExposure=1}
- setPixelRatio(v){engine.setHardwareScalingLevel(1/Math.max(.5,v))}
- setSize(w,h){engine.setSize(w,h)}
- render(){sceneNative.render()}
-}
-class CompatClock{constructor(){this.last=performance.now()}getDelta(){const n=performance.now(),d=(n-this.last)/1000;this.last=n;return d}}
-const THREE={
- Scene:CompatScene,Color:CompatColor,Fog:class{constructor(color,near,far){this.color=new CompatColor(color,c=>{sceneNative.fogColor=c});this.near=near;this.far=far;sceneNative.fogMode=B.Scene.FOGMODE_EXP2;sceneNative.fogDensity=2/Math.max(1,far-near)}},
- PerspectiveCamera:CompatCamera,WebGLRenderer:CompatRenderer,SRGBColorSpace:0,ACESFilmicToneMapping:0,PCFSoftShadowMap:0,
- HemisphereLight:class extends B.HemisphericLight{constructor(a,b,intensity){super('ambient',new B.Vector3(0,1,0),sceneNative);this.diffuse=colorFrom(a);this.groundColor=colorFrom(b);this.intensity=intensity}},
- DirectionalLight:class extends B.DirectionalLight{constructor(color,intensity){super('sun',new B.Vector3(-1,-2,1),sceneNative);this.diffuse=colorFrom(color);this.intensity=intensity;this.shadow={mapSize:{set(){}},camera:{left:-42,right:42,top:42,bottom:-42},bias:0};this.castShadow=false}},
- PointLight:class extends B.PointLight{constructor(color,intensity,distance){super('point',B.Vector3.Zero(),sceneNative);this.diffuse=colorFrom(color);this.intensity=intensity;this.range=distance}},
- MeshStandardMaterial:class extends CompatMaterial{constructor(o){super(o,false)}},
- MeshBasicMaterial:class extends CompatMaterial{constructor(o){super(o,true)}},
- ShaderMaterial:class extends CompatMaterial{constructor(o){super({color:0x8ac8d5,side:2},true)}},
- PlaneGeometry:class extends Geometry{constructor(width,height,segmentsX=1,segmentsY=1){super('plane',{width,height,segmentsX,segmentsY})}},
- SphereGeometry:class extends Geometry{constructor(radius=1,widthSegments=16,heightSegments=12){super('sphere',{radius,widthSegments,heightSegments})}},
- IcosahedronGeometry:class extends Geometry{constructor(radius=1,detail=0){super('icosa',{radius,detail})}},
- RingGeometry:class extends Geometry{constructor(inner,outer,segments=32){super('ring',{inner,outer,segments})}},
- CylinderGeometry:class extends Geometry{constructor(radiusTop=1,radiusBottom=1,height=1,radialSegments=12){super('cylinder',{radiusTop,radiusBottom,height,radialSegments})}},
- DodecahedronGeometry:class extends Geometry{constructor(radius=1,detail=0){super('dodeca',{radius,detail})}},
- BoxGeometry:class extends Geometry{constructor(width=1,height=1,depth=1){super('box',{width,height,depth})}},
- ConeGeometry:class extends Geometry{constructor(radius=1,height=1,radialSegments=8){super('cone',{radius,height,radialSegments})}},
- TorusGeometry:class extends Geometry{constructor(radius=1,tube=.4,radialSegments=12){super('torus',{radius,tube,radialSegments})}},
- CircleGeometry:class extends Geometry{constructor(radius=1,segments=32){super('circle',{radius,segments})}},
- BufferGeometry,Float32BufferAttribute,Mesh:CompatMesh,Group:CompatGroup,
- Vector3:B.Vector3,Color:CompatColor,MathUtils:{smoothstep:(x,min,max)=>{const t=Math.max(0,Math.min(1,(x-min)/(max-min)));return t*t*(3-2*t)}},
- BackSide:1,DoubleSide:2,Clock:CompatClock
-};
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
 const $=id=>document.getElementById(id),scene=new THREE.Scene();scene.background=new THREE.Color(0x8ac8d5);scene.fog=new THREE.Fog(0x8ac8d5,38,115);
 const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,180);camera.rotation.order='YXZ';
 let renderer;
@@ -241,7 +92,7 @@ scene.add(new THREE.HemisphereLight(0xc8efff,0x52613b,1.6));const sun=new THREE.
 const mat=(color,roughness=1)=>new THREE.MeshStandardMaterial({color,roughness});
 const sand=mat(0xd9c18a),grass=mat(0x4f9b58),wood=mat(0x79502e),leaf=mat(0x277344),rock=mat(0x818b8b),berry=mat(0xe34c65),water= new THREE.MeshStandardMaterial({color:0x168da9,roughness:.35,metalness:.1});
 const oceanGeo=new THREE.PlaneGeometry(300,300,72,72),ocean=new THREE.Mesh(oceanGeo,water);ocean.rotation.x=-Math.PI/2;ocean.position.y=-1.25;ocean.receiveShadow=true;
-const oceanUniforms={uOceanTime:{value:0}}; // animação suave aplicada pelo loop Babylon.js
+const oceanUniforms={uOceanTime:{value:0}}; // animação suave aplicada pelo loop do Three.js
 scene.add(ocean);
 const N=100,verts=[],inds=[],terrainColors=[];
 const sandColor=new THREE.Color(0xd9c18a),lushColor=new THREE.Color(0x3e8550),highColor=new THREE.Color(0x557b48),colorTmp=new THREE.Color();
@@ -255,19 +106,11 @@ for(let z=0;z<=N;z++)for(let x=0;x<=N;x++){
 }
 for(let z=0;z<N;z++)for(let x=0;x<N;x++){let a=z*(N+1)+x,b=a+1,c=a+N+1,d=c+1;inds.push(a,c,b,b,c,d)}
 const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));geo.setAttribute('color',new THREE.Float32BufferAttribute(terrainColors,3));geo.setIndex(inds);geo.computeVertexNormals();const island=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0xffffff,vertexColors:true,roughness:.96}));island.receiveShadow=true;scene.add(island);
-// Base nativa do Babylon: mantém a ilha visível mesmo se a malha detalhada falhar.
-const islandBase=B.MeshBuilder.CreateCylinder('island-base',{height:.34,diameter:68,tessellation:96},sceneNative);
-islandBase.position.y=-1.34;islandBase.isPickable=false;
-const islandBaseMat=new B.StandardMaterial('island-base-material',sceneNative);
-islandBaseMat.diffuseColor=B.Color3.FromHexString('#bda477');
-islandBaseMat.specularColor=new B.Color3(.04,.04,.04);
-islandBase.material=islandBaseMat;
-const islandCore=B.MeshBuilder.CreateCylinder('island-core',{height:.10,diameter:63.5,tessellation:96},sceneNative);
-islandCore.position.y=-1.12;islandCore.isPickable=false;
-const islandCoreMat=new B.StandardMaterial('island-core-material',sceneNative);
-islandCoreMat.diffuseColor=B.Color3.FromHexString('#4f9b58');
-islandCoreMat.specularColor=new B.Color3(.03,.03,.03);
-islandCore.material=islandCoreMat;
+// Camadas de base da ilha feitas diretamente no Three.js.
+const islandBase=new THREE.Mesh(new THREE.CylinderGeometry(34,34,.34,96),mat(0xbda477));
+islandBase.position.y=-1.34;islandBase.receiveShadow=true;scene.add(islandBase);
+const islandCore=new THREE.Mesh(new THREE.CylinderGeometry(31.75,31.75,.10,96),mat(0x4f9b58));
+islandCore.position.y=-1.12;islandCore.receiveShadow=true;scene.add(islandCore);
 function groundY(x,z){let r=Math.hypot(x,z),edge=Math.max(0,1-r/34);return -1.1+Math.pow(edge,.48)*3.3+Math.exp(-((x-8)**2+(z+4)**2)/100)*3+Math.exp(-((x+13)**2+(z-9)**2)/70)*2}
 
 // Céu atmosférico, sol visível e nuvens leves: decoração de baixo custo para celular.
@@ -314,10 +157,10 @@ function restoreBase(){try{const saved=JSON.parse(localStorage.getItem('survival
 function cellOccupied(x,z,layer){return builtStructures.some(s=>Math.round(s.userData.x/3)===Math.round(x/3)&&Math.round(s.userData.z/3)===Math.round(z/3)&&s.userData.layer===layer)}
 function buildPosition(){const dist=4.5,fx=-Math.sin(player.yaw),fz=-Math.cos(player.yaw),x=Math.round((player.x+fx*dist)/3)*3,z=Math.round((player.z+fz*dist)/3)*3;return{x,z,rotation:Math.round(player.yaw/(Math.PI/2))*(Math.PI/2)}}
 function refreshBuildUI(){buildPieces.forEach(b=>b.classList.toggle('selected',b.dataset.piece===selectedPiece));const p=pieceInfo[selectedPiece];$('buildCost').textContent=p.wood+' madeira'+(p.stone?' + '+p.stone+' pedra':'');}
-function toggleBuild(){if(buildMode){closeBuild();return}buildMode=true;buildPanel.classList.add('open');if(!selectedPiece)selectedPiece='foundation';refreshBuildUI();if(preview)scene.remove(preview);preview=makeStructure(selectedPiece,0,0,0);preview.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.alpha=.42;o.material.disableDepthWrite=true}});$('hint').textContent='Escolha uma peça, gire e construa. PC: R girar · Enter construir · Esc fechar.'}
+function toggleBuild(){if(buildMode){closeBuild();return}buildMode=true;buildPanel.classList.add('open');if(!selectedPiece)selectedPiece='foundation';refreshBuildUI();if(preview)scene.remove(preview);preview=makeStructure(selectedPiece,0,0,0);preview.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=.42;o.material.depthWrite=false}});$('hint').textContent='Escolha uma peça, gire e construa. PC: R girar · Enter construir · Esc fechar.'}
 function closeBuild(){buildMode=false;buildPanel.classList.remove('open');if(preview){scene.remove(preview);preview=null}}
 function rotateBuild(){buildRotation=(buildRotation+Math.PI/2)%(Math.PI*2);if(preview)preview.rotation.y=buildRotation}
-function chooseBuild(type){selectedPiece=type;refreshBuildUI();if(preview){scene.remove(preview);preview=makeStructure(type,0,0,0);preview.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.alpha=.42;o.material.disableDepthWrite=true}})}}
+function chooseBuild(type){selectedPiece=type;refreshBuildUI();if(preview){scene.remove(preview);preview=makeStructure(type,0,0,0);preview.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.transparent=true;o.material.opacity=.42;o.material.depthWrite=false}})}}
 function placeBuild(){if(!buildMode)return;const info=pieceInfo[selectedPiece],p=buildPosition(),layer=info.layer;if(woodCount<info.wood||stoneCount<info.stone){$('hint').textContent='Materiais insuficientes para '+info.label.toLowerCase()+'.';return}if(Math.hypot(p.x-player.x,p.z-player.z)>7||Math.hypot(p.x,p.z)>31){$('hint').textContent='Não é possível construir nesse local.';return}if(Math.abs(groundY(p.x+1.3,p.z)-groundY(p.x-1.3,p.z))>1.05||Math.abs(groundY(p.x,p.z+1.3)-groundY(p.x,p.z-1.3))>1.05){$('hint').textContent='Terreno muito inclinado. Escolha um local mais plano.';return}if(cellOccupied(p.x,p.z,layer)){ $('hint').textContent='Já existe uma peça desse nível nesse espaço.';return}woodCount-=info.wood;stoneCount-=info.stone;const g=makeStructure(selectedPiece,p.x,p.z,p.rotation);builtStructures.push(g);saveBase();updateHud();$('hint').textContent=info.label+' construída! Sua base está crescendo.'}
 buildPieces.forEach(b=>b.addEventListener('click',()=>chooseBuild(b.dataset.piece)));
 $('buildToggle').onclick=toggleBuild;$('rotateBuild').onclick=rotateBuild;$('placeBuild').onclick=placeBuild;$('cancelBuild').onclick=closeBuild;
@@ -465,7 +308,7 @@ const clock=new THREE.Clock();let survivalTimer=0;
 let survivalSaveClock=0;
 function animate(){requestAnimationFrame(animate);let dt=Math.min(clock.getDelta(),.04);survivalSaveClock+=dt;if(survivalSaveClock>=8){survivalSaveClock=0;if(started)saveSurvivalState();}oceanUniforms.uOceanTime.value+=dt;ocean.position.y=-1.25+Math.sin(oceanUniforms.uOceanTime.value)*.035;for(const c of clouds){c.obj.position.x+=c.speed*dt;if(c.obj.position.x>95)c.obj.position.x=-95;}if(started){let forward=(keys.KeyW||keys.ArrowUp?1:0)-(keys.KeyS||keys.ArrowDown?1:0)-joy.y,right=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+joy.x;let len=Math.hypot(forward,right);if(len>1){forward/=len;right/=len}let speed=keys.ShiftLeft?8:5;player.x+=(-Math.sin(player.yaw)*forward+Math.cos(player.yaw)*right)*speed*dt;player.z+=(-Math.cos(player.yaw)*forward-Math.sin(player.yaw)*right)*speed*dt;let r=Math.hypot(player.x,player.z);if(r>31){player.x*=31/r;player.z*=31/r}
 player.vy-=18*dt;player.y+=player.vy*dt;let floor=groundY(player.x,player.z)+1.65;if(player.y<=floor){player.y=floor;player.vy=0;player.onGround=true}
-camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0);if(buildMode&&preview){const bp=buildPosition();preview.position.set(bp.x,groundY(bp.x,bp.z),bp.z);preview.rotation.y=bp.rotation;const invalid=cellOccupied(bp.x,bp.z,pieceInfo[selectedPiece].layer)||woodCount<pieceInfo[selectedPiece].wood||stoneCount<pieceInfo[selectedPiece].stone;preview.traverse(o=>{if(o.isMesh)o.material.diffuseColor.copyFrom(B.Color3.FromHexString(invalid?'#ff5555':'#62d6a5'))})}
+camera.position.set(player.x,player.y,player.z);camera.rotation.set(player.pitch,player.yaw,0);if(buildMode&&preview){const bp=buildPosition();preview.position.set(bp.x,groundY(bp.x,bp.z),bp.z);preview.rotation.y=bp.rotation;const invalid=cellOccupied(bp.x,bp.z,pieceInfo[selectedPiece].layer)||woodCount<pieceInfo[selectedPiece].wood||stoneCount<pieceInfo[selectedPiece].stone;preview.traverse(o=>{if(o.isMesh)o.material.color.set(invalid?0xff5555:0x62d6a5)})}
 survivalTimer+=dt;updateWeather(dt);questUpdate();let moving=len>0.15,sprinting=!!keys.ShiftLeft&&moving;thirst=Math.max(0,thirst-dt*(sprinting?0.095:moving?0.045:0.025));if(thirst<=50&&thirst>25){warningText='Você está com sede. Procure água!';warningUntil=performance.now()+2500}else if(thirst<=25&&thirst>10){warningText='Desidratação: sua visão está ficando turva!';warningUntil=performance.now()+2500;camera.fov=75+Math.sin(performance.now()*.004)*3;camera.updateProjectionMatrix()}else if(thirst<=10){warningText='PERIGO: desidratação grave!';warningUntil=performance.now()+2500;health=Math.max(0,health-dt*1.2)}else{camera.fov=75;camera.updateProjectionMatrix()}if(thirst<=0){health=Math.max(0,health-dt*3)}if(hunger<=0){health=Math.max(0,health-dt*1.2)}else hunger=Math.max(0,hunger-dt*.006);if(health===0){$('hint').textContent='Você não sobreviveu... atualize a página para tentar novamente.';started=false}updateHud()}
 
 for(const a of animals){if(!a.alive)continue;a.clock+=dt;if(a.clock>2){a.clock=0;a.dir+=(rand()-.5)*1.8}let dx=Math.sin(a.dir)*dt*.8,dz=Math.cos(a.dir)*dt*.8;a.obj.position.x+=dx;a.obj.position.z+=dz;a.obj.position.y=groundY(a.obj.position.x,a.obj.position.z);if(Math.hypot(player.x-a.obj.position.x,player.z-a.obj.position.z)<1.7&&a.kind==="javali")health=Math.max(0,health-dt*1.4)}
